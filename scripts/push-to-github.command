@@ -25,7 +25,26 @@ fi
 
 echo "Checking changes..."
 if [[ -z "$(git status --porcelain)" ]]; then
-  echo "No changes to push."
+  UPSTREAM="$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || true)"
+
+  if [[ -n "$UPSTREAM" ]]; then
+    AHEAD_COUNT="$(git rev-list --count "$UPSTREAM"..HEAD)"
+
+    if [[ "$AHEAD_COUNT" -gt 0 ]]; then
+      echo "No file changes, but $AHEAD_COUNT local commit(s) are not pushed yet."
+      echo "Pushing to GitHub..."
+      git push
+      echo ""
+      echo "Done. GitHub Pages will update shortly:"
+      echo "https://hedywu-web.github.io/zenclaw-dashboard/"
+      echo ""
+      echo "Press any key to close..."
+      read -k 1
+      exit 0
+    fi
+  fi
+
+  echo "No changes or local commits to push."
   echo ""
   echo "Press any key to close..."
   read -k 1
@@ -56,7 +75,7 @@ git push
 
 echo ""
 echo "Done. GitHub Pages will update shortly:"
-echo "https://hedywu-web.github.io/zenclaw-dashboard-html/"
+echo "https://hedywu-web.github.io/zenclaw-dashboard/"
 echo ""
 echo "Press any key to close..."
 read -k 1
