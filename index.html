@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZenClaw AI</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      background: #030712;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      isolation: isolate;
+    }
+
+    /* Fixed backdrop — always covers the visible viewport */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: #030712;
+      z-index: -1;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 120px;
+      height: 60px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
+    }
+
+    .logo img {
+      height: 44px;
+      display: block;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .lang-selector {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #ccc;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    .lang-selector:hover { background: rgba(255,255,255,0.06); }
+
+    .lang-selector svg { width: 18px; height: 18px; opacity: 0.7; }
+    .lang-selector .chevron { width: 14px; height: 14px; opacity: 0.6; }
+
+    .avatar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+
+    .avatar-wrap:hover { background: rgba(255,255,255,0.06); }
+
+    .avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: #2e3340;
+      border: 1.5px solid #4a5568;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 600; color: #a0aec0;
+    }
+
+    .avatar-chevron { width: 16px; height: 16px; opacity: 0.5; }
+
+    /* ── Views ── */
+    main { flex: 1; display: flex; flex-direction: column; }
+
+    /* Landing view */
+    #view-landing {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      text-align: center;
+      padding: 24px 120px;
+    }
+
+    .hero-title {
+      font-size: 24px;
+      font-weight: 500;
+      color: #e8eaf0;
+      letter-spacing: 0.02em;
+    }
+
+    .cta-btn {
+      padding: 14px 32px;
+      background: #37b9eb;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.18s, transform 0.12s;
+      letter-spacing: 0.01em;
+    }
+
+    .cta-btn:hover { background: #2aa5d6; }
+    .cta-btn:active { transform: scale(0.97); }
+
+    /* Dashboard view */
+    #view-dashboard {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      padding: 36px 120px;
+    }
+
+    #view-dashboard.active { display: flex; }
+
+    .dash-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .dash-title {
+      font-size: 22px;
+      font-weight: 600;
+      color: #e8eaf0;
+    }
+
+    .new-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      background: #37b9eb;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+
+    .new-btn:hover { background: #2aa5d6; }
+
+    /* Card */
+    .agent-card {
+      width: 320px;
+      background: #111827;
+      border-radius: 16px;
+      padding: 40px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 280px;
+      position: relative;
+    }
+
+    /* ── Loading state ── */
+    .loading-inner {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .loading-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Spinning circle */
+    .spinner {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: 2.5px solid rgba(55,185,235,0.25);
+      border-top-color: #37b9eb;
+      animation: spin 0.9s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-label {
+      font-size: 15px;
+      color: #c8cdd8;
+    }
+
+    /* Progress bar */
+    .progress-track {
+      width: 100%;
+      height: 5px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: #37b9eb;
+      border-radius: 99px;
+      transition: width 0.12s linear;
+    }
+
+    .progress-pct {
+      font-size: 13px;
+      color: #6b7280;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    /* ── Done state ── */
+    .done-inner {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      text-align: center;
+      opacity: 0;
+      transform: scale(0.92);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .done-inner.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* Checkmark circle */
+    .check-circle {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: 3px solid #4ade80;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      position: relative;
+      animation: pop-in 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    @keyframes pop-in {
+      from { transform: scale(0.4); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .check-circle svg {
+      width: 36px; height: 36px;
+      stroke: #4ade80;
+      stroke-width: 2.5;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 60;
+      stroke-dashoffset: 60;
+      animation: draw-check 0.45s 0.2s ease forwards;
+    }
+
+    @keyframes draw-check {
+      to { stroke-dashoffset: 0; }
+    }
+
+    .done-heading {
+      font-size: 22px;
+      font-weight: 700;
+      color: #f1f5f9;
+      opacity: 0;
+      animation: fade-up 0.35s 0.3s ease forwards;
+    }
+
+    .done-sub {
+      font-size: 14px;
+      color: #4ade80;
+      margin-top: 6px;
+      opacity: 0;
+      animation: fade-up 0.35s 0.45s ease forwards;
+    }
+
+    .done-desc {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 12px;
+      line-height: 1.6;
+      opacity: 0;
+      animation: fade-up 0.35s 0.6s ease forwards;
+    }
+
+    .done-cta {
+      margin-top: 28px;
+      padding: 12px 28px;
+      background: #166534;
+      color: #4ade80;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      opacity: 0;
+      animation: fade-up 0.35s 0.75s ease forwards;
+      transition: background 0.18s;
+    }
+
+    .done-cta:hover { background: #15803d; }
+
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="#" class="logo">
+      <img src="Images/zenclaw-logo-zh.png" alt="MixerBox AI ZenClaw" />
+    </a>
+    <div class="header-right">
+      <div class="lang-selector">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span>中文</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div class="avatar-wrap">
+        <div class="avatar">K</div>
+        <svg class="avatar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Landing -->
+    <div id="view-landing">
+      <h1 class="hero-title">用 OpenClaw 建立你的 AI 助理</h1>
+      <button class="cta-btn" onclick="startFlow()">建立我的 AI 助理</button>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="view-dashboard">
+      <div class="dash-topbar">
+        <span class="dash-title">我的 AI 助理</span>
+        <button class="new-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          新增 AI 助理
+        </button>
+      </div>
+
+      <!-- Card -->
+      <div class="agent-card">
+        <!-- Loading -->
+        <div class="loading-inner" id="loading-inner">
+          <div class="loading-row">
+            <div class="spinner"></div>
+            <span class="loading-label">正在幫你準備 AI 助理…</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-pct" id="progress-pct">0%</div>
+        </div>
+
+        <!-- Done -->
+        <div class="done-inner" id="done-inner">
+          <div class="check-circle">
+            <svg viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div class="done-heading">完成。</div>
+          <div class="done-sub">3 秒上線</div>
+          <div class="done-desc">通常需要數小時的設定，你剛跳過了全部。</div>
+          <button class="done-cta">給我看 →</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function startFlow() {
+      document.getElementById('view-landing').style.display = 'none';
+      document.getElementById('view-dashboard').classList.add('active');
+
+      const fill = document.getElementById('progress-fill');
+      const pct  = document.getElementById('progress-pct');
+      const duration = 3000; // ms
+      const interval = 40;
+      let elapsed = 0;
+
+      const timer = setInterval(() => {
+        elapsed += interval;
+        const progress = Math.min(elapsed / duration * 100, 100);
+        fill.style.width = progress + '%';
+        pct.textContent  = Math.round(progress) + '%';
+
+        if (elapsed >= duration) {
+          clearInterval(timer);
+          showDone();
+        }
+      }, interval);
+    }
+
+    function showDone() {
+      const loadingEl = document.getElementById('loading-inner');
+      const doneEl    = document.getElementById('done-inner');
+
+      loadingEl.style.display = 'none';
+      doneEl.style.display    = 'flex';
+
+      // trigger transition on next frame
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          doneEl.classList.add('visible');
+        });
+      });
+    }
+  </script>
+
+</body>
+</html>
