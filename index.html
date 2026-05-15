@@ -208,7 +208,7 @@
     /* ── Card — fixed height, both states overlap ── */
     .agent-card {
       width: 308px;
-      height: 228px;
+      height: 308px;
       background: #080f1f;
       border: 1px solid rgba(255,255,255,0.07);
       border-radius: 16px;
@@ -291,8 +291,11 @@
 
     .check-circle {
       width: 54px; height: 54px; border-radius: 50%;
-      border: 2px solid #4ade80;
+      border: 3px solid #4ade80;
       display: flex; align-items: center; justify-content: center;
+      flex: 0 0 54px;
+      min-width: 54px;
+      min-height: 54px;
       margin-bottom: 14px;
       opacity: 0;
       transform: scale(0.55);
@@ -329,7 +332,7 @@
     .done-inner.visible .done-sub { opacity: 1; transform: none; }
 
     .done-desc {
-      font-size: 12px; color: #374151; line-height: 1.6;
+      font-size: 12px; color: #7b8494; line-height: 1.6;
       margin-top: 8px;
       opacity: 0; transform: translateY(7px);
       transition: opacity 0.28s 0.54s ease, transform 0.28s 0.54s ease;
