@@ -20,13 +20,23 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Fixed backdrop — always covers entire viewport */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
       background: #030712;
       z-index: -1;
+    }
+
+    /* ── Staging banner ── */
+    .staging-banner {
+      background: #d97706;
+      color: #fff;
+      text-align: center;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      flex-shrink: 0;
     }
 
     /* ── Max-width container ── */
@@ -62,6 +72,7 @@
 
     .header-right { display: flex; align-items: center; gap: 4px; }
 
+    /* ── Lang selector ── */
     .lang-selector {
       display: flex; align-items: center; gap: 6px;
       color: #64748b;
@@ -70,15 +81,39 @@
       padding: 7px 12px;
       border-radius: 8px;
       transition: background 0.15s, color 0.15s;
+      position: relative;
     }
     .lang-selector:hover { background: rgba(255,255,255,0.05); color: #cbd5e1; }
     .lang-selector svg { width: 16px; height: 16px; }
     .lang-selector .chevron { width: 13px; height: 13px; opacity: 0.5; }
 
+    .lang-dropdown {
+      position: absolute;
+      top: calc(100% + 6px); left: 0;
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      display: none; z-index: 200; min-width: 130px;
+    }
+    .lang-dropdown.open { display: block; }
+    .lang-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 7px;
+      font-size: 13.5px; color: #94a3b8; cursor: pointer;
+      transition: background 0.12s;
+    }
+    .lang-option:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
+    .lang-option.active { color: #37b9eb; }
+    .lang-option-check { width: 14px; height: 14px; opacity: 0; }
+    .lang-option.active .lang-option-check { opacity: 1; }
+
+    /* ── Avatar ── */
     .avatar-wrap {
       display: flex; align-items: center; gap: 6px;
       cursor: pointer; padding: 5px 8px; border-radius: 10px;
       transition: background 0.15s;
+      position: relative;
     }
     .avatar-wrap:hover { background: rgba(255,255,255,0.05); }
 
@@ -92,163 +127,230 @@
 
     .avatar-chevron { width: 14px; height: 14px; opacity: 0.4; color: #94a3b8; }
 
+    /* ── [改善 4] 帳戶下拉選單 ── */
+    .account-dropdown {
+      position: absolute;
+      top: calc(100% + 8px); right: 0;
+      min-width: 252px;
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      padding: 16px;
+      display: none; z-index: 200;
+    }
+    .account-dropdown.open { display: block; }
+
+    .account-email { font-size: 13px; color: #94a3b8; margin-bottom: 10px; word-break: break-all; }
+
+    .account-plan-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    }
+    .account-plan-label { font-size: 13px; color: #64748b; }
+    .plan-badge {
+      background: #d97706; color: #fff;
+      font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 4px;
+    }
+    .plan-gear { color: #475569; cursor: pointer; margin-left: auto; }
+    .plan-gear svg { width: 14px; height: 14px; display: block; }
+    .plan-gear:hover { color: #94a3b8; }
+
+    .account-divider { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 10px 0; }
+
+    /* 改善：帳單資訊加上視覺進度條和明確說明 */
+    .billing-block {
+      background: rgba(255,255,255,0.04);
+      border-radius: 8px; padding: 10px 12px;
+    }
+    .billing-label { font-size: 11px; color: #64748b; margin-bottom: 4px; }
+    .billing-amounts { font-size: 13px; color: #e2e8f0; font-weight: 500; }
+    .billing-bar {
+      height: 3px; background: rgba(255,255,255,0.08);
+      border-radius: 99px; margin-top: 7px; overflow: hidden;
+    }
+    .billing-bar-fill {
+      height: 100%; width: 100%;
+      background: linear-gradient(90deg, #37b9eb, #6dd5f5);
+      border-radius: 99px;
+    }
+    .billing-period { font-size: 11px; color: #64748b; margin-top: 5px; }
+
+    .account-logout {
+      display: block; margin-top: 8px;
+      font-size: 13.5px; color: #ef4444;
+      cursor: pointer; padding: 5px 0;
+      transition: color 0.15s; text-decoration: none;
+    }
+    .account-logout:hover { color: #f87171; }
+
     /* ── Main ── */
     main { flex: 1; display: flex; flex-direction: column; }
 
-    /* ════════════════════════
-       LANDING VIEW
-    ════════════════════════ */
-    #view-landing {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+    /* ═══════════════════════════════
+       EMPTY STATE VIEW
+    ═══════════════════════════════ */
+    #view-empty {
+      flex: 1; display: flex; flex-direction: column;
+      padding: 48px 0;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+    #view-empty .inner { flex: 1; display: flex; flex-direction: column; }
+    #view-empty.leaving { opacity: 0; transform: translateY(-16px); pointer-events: none; }
+
+    .page-title-row {
+      display: flex; align-items: baseline; gap: 12px;
+      margin-bottom: 48px;
+    }
+    .page-title { font-size: 20px; font-weight: 600; color: #f1f5f9; letter-spacing: -0.015em; }
+    .page-subtitle { font-size: 13px; color: #475569; }
+
+    /* [改善 1] 空白頁：加圖示 + 說明文字 */
+    .empty-center {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
       text-align: center;
-      padding: 80px 48px;
+      padding: 60px 0;
       position: relative;
-      overflow: hidden;
-      transition: opacity 0.38s cubic-bezier(0.4,0,0.2,1),
-                  transform 0.38s cubic-bezier(0.4,0,0.2,1);
     }
-
-    /* Atmospheric glow */
-    #view-landing::before {
+    .empty-center::before {
       content: '';
-      position: absolute;
-      top: 45%; left: 50%;
+      position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      width: 800px; height: 560px;
-      background: radial-gradient(ellipse at center,
-        rgba(55,185,235,0.07) 0%,
-        rgba(55,185,235,0.025) 45%,
-        transparent 70%
-      );
+      width: 600px; height: 400px;
+      background: radial-gradient(ellipse at center, rgba(55,185,235,0.06) 0%, transparent 70%);
       pointer-events: none;
     }
 
-    #view-landing.leaving {
-      opacity: 0;
-      transform: translateY(-18px);
-      pointer-events: none;
+    .empty-icon {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, rgba(55,185,235,0.12), rgba(55,185,235,0.04));
+      border: 1px solid rgba(55,185,235,0.2);
+      border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 24px;
     }
+    .empty-icon svg { width: 34px; height: 34px; color: #37b9eb; }
 
-    .hero-title {
-      font-size: 28px;
-      font-weight: 500;
-      color: #e2e8f0;
-      letter-spacing: -0.01em;
-      line-height: 1.45;
-      margin-bottom: 36px;
+    .empty-heading {
+      font-size: 22px; font-weight: 600;
+      color: #e2e8f0; letter-spacing: -0.01em;
+      margin-bottom: 10px;
     }
-
-    .cta-btn {
-      display: inline-flex; align-items: center; gap: 9px;
-      padding: 14px 30px;
-      background: #37b9eb;
-      color: #fff;
-      font-size: 15px; font-weight: 500;
-      border: none; border-radius: 10px; cursor: pointer;
-      letter-spacing: 0.01em;
-      transition: background 0.2s, transform 0.18s, box-shadow 0.2s;
-      box-shadow:
-        0 0 0 1px rgba(55,185,235,0.3),
-        0 0 28px rgba(55,185,235,0.2),
-        0 4px 16px rgba(0,0,0,0.35);
-    }
-    .cta-btn:hover {
-      background: #2aace0;
-      transform: translateY(-1px);
-      box-shadow:
-        0 0 0 1px rgba(55,185,235,0.4),
-        0 0 36px rgba(55,185,235,0.28),
-        0 8px 24px rgba(0,0,0,0.4);
-    }
-    .cta-btn:active { transform: translateY(0); }
-
-    /* ════════════════════════
-       DASHBOARD VIEW
-    ════════════════════════ */
-    #view-dashboard {
-      display: none;
-      flex: 1;
-      flex-direction: column;
-      opacity: 0;
-      transform: translateY(16px);
-      transition: opacity 0.42s cubic-bezier(0.4,0,0.2,1),
-                  transform 0.42s cubic-bezier(0.4,0,0.2,1);
-    }
-    #view-dashboard.active  { display: flex; }
-    #view-dashboard.entering { opacity: 1; transform: translateY(0); }
-
-    .dash-content { padding: 44px 0; }
-
-    .dash-topbar {
-      display: flex; align-items: center; justify-content: space-between;
+    .empty-desc {
+      font-size: 14.5px; color: #64748b;
+      line-height: 1.65; max-width: 400px;
       margin-bottom: 28px;
     }
 
-    .dash-title {
-      font-size: 20px; font-weight: 600;
-      color: #f1f5f9; letter-spacing: -0.015em;
+    .value-props {
+      display: flex; gap: 28px; margin-bottom: 34px;
+      flex-wrap: wrap; justify-content: center;
     }
-
-    .new-btn {
+    .value-prop {
       display: flex; align-items: center; gap: 7px;
-      padding: 9px 18px;
-      background: #37b9eb;
-      color: #fff; font-size: 14px; font-weight: 500;
-      border: none; border-radius: 8px; cursor: pointer;
-      transition: background 0.18s, transform 0.15s;
-      box-shadow: 0 0 18px rgba(55,185,235,0.2);
+      font-size: 13px; color: #64748b;
     }
-    .new-btn:hover { background: #2aace0; transform: translateY(-1px); }
-    .new-btn:active { transform: none; }
+    .value-prop svg { width: 15px; height: 15px; color: #37b9eb; flex-shrink: 0; }
 
-    /* ── Card — fixed height, both states overlap ── */
-    .agent-card {
-      width: 308px;
-      height: 308px;
+    /* ── Split button ── */
+    .split-btn-wrap { position: relative; display: inline-flex; }
+
+    .split-btn-main {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 13px 22px;
+      background: #37b9eb; color: #fff;
+      font-size: 14.5px; font-weight: 500;
+      border: none; border-radius: 10px 0 0 10px; cursor: pointer;
+      transition: background 0.18s;
+      box-shadow: 0 0 0 1px rgba(55,185,235,0.3), 0 0 28px rgba(55,185,235,0.2), 0 4px 16px rgba(0,0,0,0.35);
+      letter-spacing: 0.01em;
+    }
+    .split-btn-main:hover { background: #2aace0; }
+
+    .split-btn-chevron {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 13px 12px;
+      background: #2aace0; color: #fff;
+      border: none; border-left: 1px solid rgba(255,255,255,0.2);
+      border-radius: 0 10px 10px 0; cursor: pointer;
+      transition: background 0.18s;
+      box-shadow: 0 0 0 1px rgba(55,185,235,0.3), 0 4px 16px rgba(0,0,0,0.35);
+    }
+    .split-btn-chevron:hover { background: #1f9fd4; }
+    .split-btn-chevron svg { width: 14px; height: 14px; }
+
+    /* [改善 2] 下拉選單：兩個選項都有說明文字 */
+    .split-dropdown {
+      position: absolute;
+      top: calc(100% + 6px); left: 0;
+      min-width: 260px;
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      overflow: hidden; display: none; z-index: 50;
+    }
+    .split-dropdown.open { display: block; }
+
+    .split-option {
+      padding: 13px 16px; cursor: pointer;
+      transition: background 0.15s;
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .split-option:hover { background: rgba(255,255,255,0.05); }
+    .split-option + .split-option { border-top: 1px solid rgba(255,255,255,0.06); }
+    .split-option-check { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; color: #37b9eb; }
+    .split-option-spacer { width: 16px; flex-shrink: 0; }
+    .split-option-body { flex: 1; }
+    .split-option-name {
+      font-size: 14px; font-weight: 500; color: #e2e8f0;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .split-option-desc { font-size: 12px; color: #64748b; margin-top: 3px; line-height: 1.5; }
+    .free-badge {
+      background: rgba(74,222,128,0.12);
+      border: 1px solid rgba(74,222,128,0.2);
+      color: #4ade80; font-size: 11px; font-weight: 600;
+      padding: 1px 7px; border-radius: 4px;
+    }
+
+    /* ═══════════════════════════════
+       DASHBOARD VIEW
+    ═══════════════════════════════ */
+    #view-dashboard {
+      display: none; flex: 1; flex-direction: column;
+      opacity: 0; transform: translateY(16px);
+      transition: opacity 0.42s cubic-bezier(0.4,0,0.2,1), transform 0.42s cubic-bezier(0.4,0,0.2,1);
+      padding: 48px 0;
+    }
+    #view-dashboard.active { display: flex; }
+    #view-dashboard.entering { opacity: 1; transform: none; }
+    #view-dashboard .inner { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Instance card ── */
+    .instance-card {
       background: #080f1f;
-      border: 1px solid rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
-      position: relative;
       overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.4);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.35);
+      position: relative;
     }
-
-    /* Subtle top accent */
-    .agent-card::before {
+    .instance-card::before {
       content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg,
-        transparent 0%,
-        rgba(55,185,235,0.35) 50%,
-        transparent 100%
-      );
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(55,185,235,0.35), transparent);
     }
 
-    /* Both states fill the card and crossfade */
-    .loading-inner,
-    .done-inner {
-      position: absolute;
-      inset: 0;
-      padding: 28px 28px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      transition: opacity 0.38s ease;
+    /* ── Deploying state ── */
+    .deploy-state {
+      padding: 48px 32px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 200px; text-align: center;
     }
-
-    /* ── Loading ── */
-    .loading-inner { opacity: 1; }
-    .loading-inner.hidden { opacity: 0; pointer-events: none; }
-
-    .loading-row {
-      display: flex; align-items: center; gap: 11px;
-      margin-bottom: 18px;
-    }
+    .deploy-spinner-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
 
     .spinner {
       width: 19px; height: 19px; flex-shrink: 0;
@@ -257,103 +359,418 @@
       border-top-color: #37b9eb;
       animation: spin 0.75s linear infinite;
     }
-
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .loading-label { font-size: 13.5px; color: #94a3b8; }
+    .deploy-label { font-size: 13.5px; color: #94a3b8; }
 
-    .progress-track {
-      width: 100%; height: 3px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 99px; overflow: hidden;
+    .deploy-progress-track {
+      width: 300px; max-width: 100%; height: 3px;
+      background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden;
       margin-bottom: 10px;
     }
-
-    .progress-fill {
+    .deploy-progress-fill {
       height: 100%; width: 0%;
-      background: linear-gradient(90deg, #37b9eb 0%, #6dd5f5 100%);
-      border-radius: 99px;
-      transition: width 0.08s linear;
+      background: linear-gradient(90deg, #37b9eb, #6dd5f5);
+      border-radius: 99px; transition: width 0.08s linear;
     }
+    .deploy-pct { font-size: 12px; color: #374151; }
 
-    .progress-pct {
-      font-size: 12px; color: #374151;
-      font-variant-numeric: tabular-nums;
+    /* ── Success state ── */
+    .success-state {
+      padding: 48px 32px;
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 200px; text-align: center;
     }
-
-    /* ── Done ── */
-    .done-inner {
-      opacity: 0;
-      align-items: center;
-      text-align: center;
-    }
-    .done-inner.visible { opacity: 1; }
+    .success-state.visible { display: flex; }
 
     .check-circle {
-      width: 54px; height: 54px; border-radius: 50%;
+      width: 56px; height: 56px; border-radius: 50%;
       border: 3px solid #4ade80;
       display: flex; align-items: center; justify-content: center;
-      flex: 0 0 54px;
-      min-width: 54px;
-      min-height: 54px;
-      margin-bottom: 14px;
-      opacity: 0;
-      transform: scale(0.55);
+      margin-bottom: 16px; flex-shrink: 0;
+      opacity: 0; transform: scale(0.55);
       transition: opacity 0.32s ease, transform 0.38s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .done-inner.visible .check-circle {
-      opacity: 1; transform: scale(1);
-    }
-
+    .success-state.animate .check-circle { opacity: 1; transform: scale(1); }
     .check-circle svg {
-      width: 26px; height: 26px;
-      stroke: #4ade80; stroke-width: 2.5;
+      width: 26px; height: 26px; stroke: #4ade80; stroke-width: 2.5;
       fill: none; stroke-linecap: round; stroke-linejoin: round;
       stroke-dasharray: 46; stroke-dashoffset: 46;
     }
-    .done-inner.visible .check-circle svg {
-      animation: draw-check 0.38s 0.22s ease forwards;
-    }
+    .success-state.animate .check-circle svg { animation: draw-check 0.38s 0.22s ease forwards; }
     @keyframes draw-check { to { stroke-dashoffset: 0; } }
 
-    .done-heading {
-      font-size: 19px; font-weight: 700; color: #f1f5f9;
+    .success-heading {
+      font-size: 20px; font-weight: 700; color: #f1f5f9;
       opacity: 0; transform: translateY(7px);
       transition: opacity 0.28s 0.32s ease, transform 0.28s 0.32s ease;
     }
-    .done-inner.visible .done-heading { opacity: 1; transform: none; }
+    .success-state.animate .success-heading { opacity: 1; transform: none; }
 
-    .done-sub {
-      font-size: 12.5px; color: #4ade80;
-      margin-top: 4px;
+    .success-sub {
+      font-size: 13px; color: #4ade80; margin-top: 4px;
       opacity: 0; transform: translateY(7px);
       transition: opacity 0.28s 0.44s ease, transform 0.28s 0.44s ease;
     }
-    .done-inner.visible .done-sub { opacity: 1; transform: none; }
+    .success-state.animate .success-sub { opacity: 1; transform: none; }
 
-    .done-desc {
-      font-size: 12px; color: #7b8494; line-height: 1.6;
-      margin-top: 8px;
+    .success-desc {
+      font-size: 12.5px; color: #64748b; line-height: 1.6; margin-top: 8px;
       opacity: 0; transform: translateY(7px);
       transition: opacity 0.28s 0.54s ease, transform 0.28s 0.54s ease;
     }
-    .done-inner.visible .done-desc { opacity: 1; transform: none; }
+    .success-state.animate .success-desc { opacity: 1; transform: none; }
 
-    .done-cta {
-      margin-top: 16px;
-      padding: 9px 22px;
-      background: rgba(74,222,128,0.1);
-      color: #4ade80; font-size: 13.5px; font-weight: 600;
+    .success-cta {
+      margin-top: 18px; padding: 10px 24px;
+      background: rgba(74,222,128,0.1); color: #4ade80;
+      font-size: 14px; font-weight: 600;
       border: 1px solid rgba(74,222,128,0.22);
       border-radius: 8px; cursor: pointer;
       opacity: 0; transform: translateY(7px);
       transition: opacity 0.28s 0.64s ease, transform 0.28s 0.64s ease, background 0.18s;
     }
-    .done-cta:hover { background: rgba(74,222,128,0.18); }
-    .done-inner.visible .done-cta { opacity: 1; transform: none; }
+    .success-cta:hover { background: rgba(74,222,128,0.18); }
+    .success-state.animate .success-cta { opacity: 1; transform: none; }
+
+    /* ── Detail state ── */
+    .detail-state { display: none; }
+    .detail-state.visible { display: block; }
+
+    /* [改善 5] 實例資訊區：分行顯示，不再擠成一行 */
+    .instance-header { padding: 24px 28px 20px; }
+
+    .instance-status-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(74,222,128,0.1);
+      border: 1px solid rgba(74,222,128,0.22);
+      color: #4ade80; font-size: 12px; font-weight: 500;
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .status-badge svg { width: 11px; height: 11px; }
+    .tier-badge {
+      background: rgba(55,185,235,0.12);
+      border: 1px solid rgba(55,185,235,0.22);
+      color: #7dd3fc; font-size: 12px; font-weight: 500;
+      padding: 3px 10px; border-radius: 20px;
+    }
+
+    .info-grid { display: flex; flex-direction: column; gap: 8px; }
+    .info-row { display: flex; align-items: center; gap: 10px; }
+    .info-label { font-size: 12px; color: #475569; min-width: 76px; }
+    .info-value {
+      font-size: 12.5px; color: #94a3b8;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .copy-btn {
+      color: #475569; cursor: pointer;
+      background: none; border: none; padding: 2px;
+      transition: color 0.15s; line-height: 0;
+    }
+    .copy-btn:hover { color: #94a3b8; }
+    .copy-btn svg { width: 13px; height: 13px; }
+
+    .instance-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); }
+
+    /* [改善 3] ControlUI → 改為更直白的按鈕文字 + tooltip */
+    .instance-actions-top {
+      padding: 18px 28px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .control-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px;
+      background: #37b9eb; color: #fff;
+      font-size: 14px; font-weight: 500;
+      border: none; border-radius: 9px; cursor: pointer;
+      transition: background 0.18s;
+      box-shadow: 0 0 18px rgba(55,185,235,0.2);
+    }
+    .control-btn:hover { background: #2aace0; }
+    .control-btn svg { width: 14px; height: 14px; }
+
+    /* Tooltip */
+    .tooltip-wrap { position: relative; display: inline-flex; }
+    .tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+      background: #1e293b;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #cbd5e1; font-size: 12px; line-height: 1.5;
+      padding: 8px 12px; border-radius: 8px;
+      white-space: normal; text-align: center;
+      max-width: 220px; width: max-content;
+      pointer-events: none; opacity: 0;
+      transition: opacity 0.15s; z-index: 50;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .tooltip::after {
+      content: '';
+      position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: #1e293b;
+    }
+    .tooltip-wrap:hover .tooltip { opacity: 1; }
+
+    /* [改善 6] 模型列：重整圖示有 tooltip，模型名稱有別名 */
+    .model-row {
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .model-label { font-size: 13px; color: #64748b; }
+    .model-refresh-btn {
+      color: #475569; background: none; border: none;
+      padding: 3px; border-radius: 4px;
+      cursor: pointer; display: flex; align-items: center;
+      transition: color 0.15s;
+    }
+    .model-refresh-btn:hover { color: #94a3b8; }
+    .model-refresh-btn svg { width: 14px; height: 14px; }
+    .model-selector {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px; padding: 5px 10px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .model-selector:hover { background: rgba(255,255,255,0.07); }
+    .model-name { font-size: 13px; color: #e2e8f0; }
+    .model-alias { font-size: 11.5px; color: #64748b; }
+    .model-chevron { width: 13px; height: 13px; color: #475569; }
+    .litellm-badge {
+      background: rgba(139,92,246,0.12);
+      border: 1px solid rgba(139,92,246,0.2);
+      color: #a78bfa; font-size: 11px; font-weight: 500;
+      padding: 2px 8px; border-radius: 4px;
+    }
+
+    /* ── Channels ── */
+    .channels-section { padding: 20px 28px 0; }
+    .channels-heading {
+      font-size: 12px; font-weight: 600; color: #475569;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      margin-bottom: 10px;
+    }
+
+    .channel-card {
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; margin-bottom: 8px;
+      overflow: hidden; background: rgba(255,255,255,0.015);
+    }
+    .channel-header {
+      display: flex; align-items: center;
+      padding: 13px 16px; cursor: pointer; gap: 12px;
+      transition: background 0.15s;
+      user-select: none;
+    }
+    .channel-header:hover { background: rgba(255,255,255,0.03); }
+
+    .channel-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .channel-name { font-size: 14px; font-weight: 500; color: #e2e8f0; }
+    .channel-desc-short { font-size: 12px; color: #64748b; margin-top: 1px; }
+    .channel-meta { flex: 1; }
+
+    .connected-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      color: #4ade80; font-size: 12px; font-weight: 500; flex-shrink: 0;
+    }
+    .connected-badge svg { width: 12px; height: 12px; }
+
+    .channel-chevron {
+      width: 16px; height: 16px; color: #475569;
+      flex-shrink: 0; transition: transform 0.2s;
+    }
+    .channel-card.expanded .channel-chevron { transform: rotate(180deg); }
+
+    .channel-body {
+      display: none;
+      padding: 0 16px 16px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .channel-card.expanded .channel-body { display: block; }
+
+    /* MixerBox connected body */
+    .bot-name-row {
+      display: flex; align-items: center; gap: 8px; padding: 12px 0 10px;
+    }
+    .bot-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, #1e3a5f, #0f2744);
+      border: 1.5px solid rgba(55,185,235,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: #7dd3fc; flex-shrink: 0;
+    }
+    .bot-name { font-size: 13.5px; color: #e2e8f0; font-weight: 500; }
+    .edit-icon-btn {
+      color: #475569; background: none; border: none; padding: 2px;
+      cursor: pointer; transition: color 0.15s; line-height: 0;
+    }
+    .edit-icon-btn:hover { color: #94a3b8; }
+    .edit-icon-btn svg { width: 13px; height: 13px; }
+
+    .open-chat-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px;
+      background: rgba(55,185,235,0.1);
+      border: 1px solid rgba(55,185,235,0.2);
+      color: #37b9eb; font-size: 13px; font-weight: 500;
+      border-radius: 7px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .open-chat-btn:hover { background: rgba(55,185,235,0.16); }
+    .open-chat-btn svg { width: 13px; height: 13px; }
+
+    .plugin-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 12px; padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .plugin-version { font-size: 11.5px; color: #475569; }
+    .latest-badge {
+      background: rgba(55,185,235,0.1);
+      border: 1px solid rgba(55,185,235,0.18);
+      color: #37b9eb; font-size: 11px; font-weight: 500;
+      padding: 1px 7px; border-radius: 4px;
+    }
+
+    /* Pairing body */
+    .pairing-body { padding: 12px 0 2px; }
+    .pairing-title { font-size: 13px; font-weight: 600; color: #e2e8f0; margin-bottom: 10px; }
+    .pairing-notice {
+      background: rgba(251,191,36,0.08);
+      border: 1px solid rgba(251,191,36,0.18);
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 12px; color: #fbbf24; line-height: 1.55;
+      margin-bottom: 14px;
+    }
+    .pairing-steps {
+      list-style: none; counter-reset: steps;
+      margin-bottom: 16px;
+    }
+    .pairing-steps li {
+      counter-increment: steps;
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 12.5px; color: #94a3b8; line-height: 1.55;
+      margin-bottom: 8px;
+    }
+    .pairing-steps li::before {
+      content: counter(steps);
+      width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(55,185,235,0.12);
+      border: 1px solid rgba(55,185,235,0.2);
+      color: #37b9eb; font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .pairing-steps a { color: #37b9eb; text-decoration: none; }
+    .pairing-steps a:hover { text-decoration: underline; }
+
+    /* [改善 8] LINE 配對按鈕：從綠色改為藍色，與主 CTA 顏色系統一致 */
+    .pairing-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px;
+      background: rgba(55,185,235,0.12);
+      border: 1px solid rgba(55,185,235,0.25);
+      color: #37b9eb; font-size: 13px; font-weight: 600;
+      border-radius: 8px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .pairing-btn:hover { background: rgba(55,185,235,0.2); }
+
+    /* ── Instance footer ── */
+    .instance-footer { padding: 20px 28px 24px; }
+
+    /* [改善 7] 標籤區塊加上說明文字 */
+    .tags-section { margin-bottom: 16px; }
+    .tags-label { font-size: 11.5px; color: #475569; margin-bottom: 7px; }
+    .tags-add {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px dashed rgba(255,255,255,0.12);
+      border-radius: 20px; color: #475569;
+      font-size: 12.5px; cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .tags-add:hover { border-color: rgba(255,255,255,0.22); color: #64748b; }
+    .tags-add svg { width: 12px; height: 12px; }
+
+    /* [改善 11] 危險操作視覺分離 */
+    .instance-actions-bottom {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .action-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #94a3b8; font-size: 13px;
+      border-radius: 8px; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .action-btn svg { width: 13px; height: 13px; }
+    .action-btn:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.18); color: #e2e8f0; }
+
+    .action-btn-spacer { flex: 1; }
+
+    .delete-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid rgba(239,68,68,0.28);
+      color: #ef4444; font-size: 13px;
+      border-radius: 8px; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .delete-btn svg { width: 13px; height: 13px; }
+    .delete-btn:hover { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.4); }
+
+    /* ── Add instance row ── */
+    .add-instance-row { }
+    .add-split-wrap { position: relative; display: inline-flex; }
+    .add-split-main {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #94a3b8; font-size: 13.5px;
+      border-radius: 9px 0 0 9px; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .add-split-main:hover { background: rgba(255,255,255,0.07); color: #e2e8f0; }
+    .add-split-main svg { width: 14px; height: 14px; }
+    .add-split-chevron {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 10px 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1); border-left: none;
+      color: #64748b;
+      border-radius: 0 9px 9px 0; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .add-split-chevron:hover { background: rgba(255,255,255,0.07); }
+    .add-split-chevron svg { width: 13px; height: 13px; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 32px 16px;
+      font-size: 12px; color: #334155; line-height: 1.8;
+    }
+    footer a { color: #475569; text-decoration: none; }
+    footer a:hover { color: #64748b; }
   </style>
 </head>
 <body>
+
+  <div class="staging-banner">Staging Environment — changes here don't affect real users</div>
 
   <header>
     <div class="inner">
@@ -361,7 +778,9 @@
         <img src="Images/zenclaw-logo-zh.png" alt="MixerBox AI ZenClaw" />
       </a>
       <div class="header-right">
-        <div class="lang-selector">
+
+        <!-- Language selector -->
+        <div class="lang-selector" id="lang-trigger" onclick="toggleDropdown(event,'lang-dd')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
@@ -370,132 +789,527 @@
           <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
+          <div class="lang-dropdown" id="lang-dd">
+            <div class="lang-option active">
+              <svg class="lang-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              中文
+            </div>
+            <div class="lang-option">
+              <svg class="lang-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              English
+            </div>
+          </div>
         </div>
-        <div class="avatar-wrap">
+
+        <!-- Avatar -->
+        <div class="avatar-wrap" onclick="toggleDropdown(event,'acct-dd')">
           <div class="avatar">K</div>
           <svg class="avatar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
+          <!-- [改善 4] 帳戶選單：清楚的計費資訊 -->
+          <div class="account-dropdown" id="acct-dd">
+            <div class="account-email">kitty10081008@gmail.com</div>
+            <div class="account-plan-row">
+              <span class="account-plan-label">方案</span>
+              <span class="plan-badge">Scale</span>
+              <span class="plan-gear">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </span>
+            </div>
+            <hr class="account-divider"/>
+            <div class="billing-block">
+              <div class="billing-label">本計費週期用量</div>
+              <div class="billing-amounts">$270.02 / $270.00</div>
+              <div class="billing-bar"><div class="billing-bar-fill"></div></div>
+              <div class="billing-period">計費週期剩餘 14 天</div>
+            </div>
+            <hr class="account-divider"/>
+            <a class="account-logout" href="#">登出</a>
+          </div>
         </div>
+
       </div>
     </div>
   </header>
 
   <main>
 
-    <!-- Landing -->
-    <div id="view-landing">
-      <h1 class="hero-title">用 OpenClaw 建立你的 AI 助理</h1>
-      <button class="cta-btn" onclick="startFlow()">
-        建立我的 AI 助理
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M5 12h14M12 5l7 7-7 7"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Dashboard -->
-    <div id="view-dashboard">
+    <!-- ═══ 空白狀態 ═══ -->
+    <div id="view-empty">
       <div class="inner">
-        <div class="dash-content">
-          <div class="dash-topbar">
-            <span class="dash-title">我的 AI 助理</span>
-            <button class="new-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <div class="page-title-row">
+          <span class="page-title">OpenClaw 實例</span>
+          <span class="page-subtitle">0 個就緒、0 個部署中</span>
+        </div>
+
+        <!-- [改善 1] 空白頁加圖示 + 產品說明 + 價值亮點 -->
+        <div class="empty-center">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <path d="M8 21h8M12 17v4"/>
+              <path d="M7 8h.01M11 8h5M7 11.5h8"/>
+            </svg>
+          </div>
+          <div class="empty-heading">建立你的第一個 AI 助理</div>
+          <div class="empty-desc">OpenClaw 幫你在幾秒內部署一個專屬 AI 助理，省去數小時的繁瑣設定，並即時接入 LINE、Telegram 等常用平台。</div>
+
+          <div class="value-props">
+            <div class="value-prop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+              9 秒完成部署
+            </div>
+            <div class="value-prop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              多平台一鍵整合
+            </div>
+            <div class="value-prop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+              </svg>
+              自選 AI 模型
+            </div>
+          </div>
+
+          <!-- [改善 2] 下拉選單兩個選項都有說明 -->
+          <div class="split-btn-wrap">
+            <button class="split-btn-main" onclick="startDeploy()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
-              新增 AI 助理
+              新增專屬主機
             </button>
-          </div>
-
-          <div class="agent-card">
-            <!-- Loading state -->
-            <div class="loading-inner" id="loading-inner">
-              <div class="loading-row">
-                <div class="spinner"></div>
-                <span class="loading-label">正在幫你準備 AI 助理…</span>
+            <button class="split-btn-chevron" onclick="toggleDropdown(event,'split-dd-empty')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            <div class="split-dropdown" id="split-dd-empty">
+              <div class="split-option" onclick="startDeploy()">
+                <svg class="split-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="split-option-body">
+                  <div class="split-option-name">專屬</div>
+                  <div class="split-option-desc">常駐運行、專屬資源，效能與穩定性最高</div>
+                </div>
               </div>
-              <div class="progress-track">
-                <div class="progress-fill" id="progress-fill"></div>
+              <div class="split-option" onclick="startDeploy()">
+                <div class="split-option-spacer"></div>
+                <div class="split-option-body">
+                  <div class="split-option-name">標準 <span class="free-badge">免費</span></div>
+                  <div class="split-option-desc">按需啟動、共享資源，適合輕量或初期試用</div>
+                </div>
               </div>
-              <div class="progress-pct" id="progress-pct">0%</div>
-            </div>
-
-            <!-- Done state -->
-            <div class="done-inner" id="done-inner">
-              <div class="check-circle">
-                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <div class="done-heading">完成。</div>
-              <div class="done-sub">3 秒上線</div>
-              <div class="done-desc">通常需要數小時的設定，你剛跳過了全部。</div>
-              <button class="done-cta">給我看 →</button>
             </div>
           </div>
-
         </div>
+      </div>
+    </div>
+
+    <!-- ═══ Dashboard ═══ -->
+    <div id="view-dashboard">
+      <div class="inner">
+
+        <div class="page-title-row">
+          <span class="page-title">OpenClaw 實例</span>
+          <span class="page-subtitle">1 個就緒、0 個部署中</span>
+        </div>
+
+        <!-- Instance card -->
+        <div class="instance-card">
+
+          <!-- Deploying -->
+          <div class="deploy-state" id="deploy-state">
+            <div class="deploy-spinner-row">
+              <div class="spinner"></div>
+              <span class="deploy-label">正在幫你準備 AI 助理…</span>
+            </div>
+            <div class="deploy-progress-track">
+              <div class="deploy-progress-fill" id="deploy-fill"></div>
+            </div>
+            <div class="deploy-pct" id="deploy-pct">0%</div>
+          </div>
+
+          <!-- Success -->
+          <div class="success-state" id="success-state">
+            <div class="check-circle">
+              <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="success-heading">完成。</div>
+            <div class="success-sub">2 秒上線</div>
+            <div class="success-desc">通常需要數小時的設定，你剛跳過了全部。</div>
+            <button class="success-cta" onclick="showDetail()">給我看 →</button>
+          </div>
+
+          <!-- Detail -->
+          <div class="detail-state" id="detail-state">
+
+            <!-- [改善 5] 資訊區：分行顯示 -->
+            <div class="instance-header">
+              <div class="instance-status-row">
+                <span class="status-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  你的安裝已就緒
+                </span>
+                <span class="tier-badge">專屬</span>
+              </div>
+              <div class="info-grid">
+                <div class="info-row">
+                  <span class="info-label">Bot 網域</span>
+                  <span class="info-value">
+                    g-3aff885078c1ed07.zenclaw.bot
+                    <button class="copy-btn" title="複製" onclick="copyFeedback(this)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                  </span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">代理人信箱</span>
+                  <span class="info-value">
+                    zenclaw-mpanjhnl-bu3@clawmail.me
+                    <button class="copy-btn" title="複製" onclick="copyFeedback(this)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <hr class="instance-divider"/>
+
+            <!-- [改善 3] 按鈕文字改為更直白的說明 + tooltip -->
+            <div class="instance-actions-top">
+              <div class="tooltip-wrap">
+                <button class="control-btn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                  開啟 AI 助理後台
+                </button>
+                <div class="tooltip">管理知識庫、提示詞與進階設定<br/>（由 ControlUI 驅動）</div>
+              </div>
+            </div>
+
+            <hr class="instance-divider"/>
+
+            <!-- [改善 6] 模型：刷新圖示有 tooltip + 顯示模型別名 -->
+            <div class="model-row">
+              <span class="model-label">模型</span>
+              <div class="tooltip-wrap">
+                <button class="model-refresh-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                </button>
+                <div class="tooltip">重新載入可用模型列表</div>
+              </div>
+              <div class="model-selector">
+                <span class="model-name">minimax-m2.5-routed</span>
+                <span class="model-alias">&nbsp;· 快速回應</span>
+                <svg class="model-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+              <span class="litellm-badge">LiteLLM</span>
+            </div>
+
+            <hr class="instance-divider"/>
+
+            <!-- Channels -->
+            <div class="channels-section">
+              <div class="channels-heading">連結頻道</div>
+
+              <!-- MixerBox AI Chat (已連接，預設展開) -->
+              <div class="channel-card expanded">
+                <div class="channel-header" onclick="toggleChannel(this.parentElement)">
+                  <div class="channel-icon" style="background:linear-gradient(135deg,#1a3a6b,#0f2744)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  </div>
+                  <div class="channel-meta">
+                    <div class="channel-name">MixerBox AI Chat</div>
+                    <div class="channel-desc-short">透過 MixerBox AI App 與此 AI 助手聊天</div>
+                  </div>
+                  <span class="connected-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    已連接
+                  </span>
+                  <svg class="channel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="channel-body">
+                  <div class="bot-name-row">
+                    <div class="bot-avatar">Z</div>
+                    <span class="bot-name">ZenClaw AI</span>
+                    <button class="edit-icon-btn" title="編輯名稱">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                  </div>
+                  <button class="open-chat-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    開啟聊天
+                  </button>
+                  <div class="plugin-row">
+                    <span class="plugin-version">Plugin &nbsp; v2026.4.13</span>
+                    <span class="latest-badge">最新</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- LINE -->
+              <div class="channel-card">
+                <div class="channel-header" onclick="toggleChannel(this.parentElement)">
+                  <div class="channel-icon" style="background:#06c755">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.02 2 11c0 3.15 1.63 5.94 4.14 7.72.18.12.29.32.29.54v2.13c0 .39.43.62.76.41L9.5 20.3a1 1 0 0 1 .55-.09c.64.08 1.29.13 1.95.13 5.52 0 10-4.02 10-9S17.52 2 12 2z"/></svg>
+                  </div>
+                  <div class="channel-meta">
+                    <div class="channel-name">LINE</div>
+                    <div class="channel-desc-short">透過 LINE 與你的 AI 助理聊天。</div>
+                  </div>
+                  <svg class="channel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="channel-body">
+                  <div class="pairing-body">
+                    <div class="pairing-title">配對你的 LINE 帳號</div>
+                    <div class="pairing-notice">注意：一個 LINE 帳號只能綁定一台 instance，若要配對其他 instance，請先解除目前綁定。</div>
+                    <ol class="pairing-steps">
+                      <li>點擊下方的「產生配對碼」取得一組配對碼</li>
+                      <li>在 LINE 加入 <a href="#">@zenclawai</a> 為好友</li>
+                      <li>將配對碼傳給機器人，配對會自動完成</li>
+                    </ol>
+                    <button class="pairing-btn">產生配對碼</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Telegram -->
+              <div class="channel-card">
+                <div class="channel-header" onclick="toggleChannel(this.parentElement)">
+                  <div class="channel-icon" style="background:#2CA5E0">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+                  </div>
+                  <div class="channel-meta">
+                    <div class="channel-name">Telegram</div>
+                    <div class="channel-desc-short">透過 Telegram 與你的 AI 助理聊天。</div>
+                  </div>
+                  <svg class="channel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="channel-body">
+                  <div class="pairing-body">
+                    <div class="pairing-title">連接 Telegram Bot</div>
+                    <ol class="pairing-steps">
+                      <li>前往 Telegram，搜尋 <a href="#">@BotFather</a></li>
+                      <li>建立新 Bot 並取得 API Token</li>
+                      <li>將 Token 填入下方欄位完成連接</li>
+                    </ol>
+                    <button class="pairing-btn">輸入 Bot Token</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Microsoft Teams -->
+              <div class="channel-card">
+                <div class="channel-header" onclick="toggleChannel(this.parentElement)">
+                  <div class="channel-icon" style="background:#5059C9">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M20 3H7a2 2 0 0 0-2 2v2H3a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2v2a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></svg>
+                  </div>
+                  <div class="channel-meta">
+                    <div class="channel-name">Microsoft Teams</div>
+                    <div class="channel-desc-short">透過 Microsoft Teams 與你的 AI 助手對話。</div>
+                  </div>
+                  <svg class="channel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="channel-body">
+                  <div class="pairing-body">
+                    <div class="pairing-title">連接 Microsoft Teams</div>
+                    <ol class="pairing-steps">
+                      <li>在 Azure 入口網站建立 Bot 應用程式</li>
+                      <li>設定 Messaging Endpoint 為你的 ZenClaw 網址</li>
+                      <li>將 App ID 與 Secret 填入下方欄位</li>
+                    </ol>
+                    <button class="pairing-btn">開始設定</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- [改善 7+11] 標籤說明 + 危險操作分離 -->
+            <div class="instance-footer">
+              <div class="tags-section">
+                <div class="tags-label">標籤（用於識別或分組此實例）</div>
+                <div class="tags-add">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  新增標籤…
+                </div>
+              </div>
+
+              <div class="instance-actions-bottom">
+                <button class="action-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  編輯網路政策
+                </button>
+                <button class="action-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  修復並重啟
+                </button>
+                <div class="action-btn-spacer"></div>
+                <button class="delete-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                  刪除安裝
+                </button>
+              </div>
+            </div>
+
+          </div><!-- /detail-state -->
+        </div><!-- /instance-card -->
+
+        <!-- Add more instances -->
+        <div class="add-instance-row">
+          <div class="add-split-wrap">
+            <button class="add-split-main">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              新增專屬主機
+            </button>
+            <button class="add-split-chevron" onclick="toggleDropdown(event,'split-dd-add')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="split-dropdown" id="split-dd-add">
+              <div class="split-option">
+                <svg class="split-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="split-option-body">
+                  <div class="split-option-name">專屬</div>
+                  <div class="split-option-desc">常駐運行、專屬資源，效能與穩定性最高</div>
+                </div>
+              </div>
+              <div class="split-option">
+                <div class="split-option-spacer"></div>
+                <div class="split-option-body">
+                  <div class="split-option-name">標準 <span class="free-badge">免費</span></div>
+                  <div class="split-option-desc">按需啟動、共享資源，適合輕量或初期試用</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
   </main>
 
+  <footer>
+    zenclaw.ai 由 <a href="#">MixerBox Inc.</a> 擁有和營運，MixerBox 是 Y Combinator 公司。<br/>
+    © 2026 MixerBox Inc. 保留所有權利。
+  </footer>
+
   <script>
-    function startFlow() {
-      const landing   = document.getElementById('view-landing');
-      const dashboard = document.getElementById('view-dashboard');
+    /* ── 所有下拉選單統一管理 ── */
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.split-dropdown, .account-dropdown, .lang-dropdown').forEach(d => d.classList.remove('open'));
+    });
 
-      // 1. Fade out landing
-      landing.classList.add('leaving');
-
-      setTimeout(() => {
-        landing.style.display = 'none';
-
-        // 2. Mount dashboard (still transparent)
-        dashboard.classList.add('active');
-
-        // 3. Trigger enter animation on next two frames
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          dashboard.classList.add('entering');
-        }));
-
-        // 4. Start progress after dashboard is visible
-        setTimeout(startProgress, 80);
-      }, 380);
+    function toggleDropdown(e, id) {
+      e.stopPropagation();
+      const dd = document.getElementById(id);
+      const wasOpen = dd.classList.contains('open');
+      document.querySelectorAll('.split-dropdown, .account-dropdown, .lang-dropdown').forEach(d => d.classList.remove('open'));
+      if (!wasOpen) dd.classList.add('open');
     }
 
-    function startProgress() {
-      const fill     = document.getElementById('progress-fill');
-      const pct      = document.getElementById('progress-pct');
-      const duration = 3000;
+    /* ── 部署流程 ── */
+    function startDeploy() {
+      document.querySelectorAll('.split-dropdown').forEach(d => d.classList.remove('open'));
+
+      const emptyView   = document.getElementById('view-empty');
+      const dashView    = document.getElementById('view-dashboard');
+      const deployState = document.getElementById('deploy-state');
+
+      emptyView.classList.add('leaving');
+
+      setTimeout(() => {
+        emptyView.style.display = 'none';
+        deployState.style.display = 'flex';
+        dashView.classList.add('active');
+
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          dashView.classList.add('entering');
+        }));
+
+        setTimeout(runProgress, 80);
+      }, 360);
+    }
+
+    function runProgress() {
+      const fill     = document.getElementById('deploy-fill');
+      const pct      = document.getElementById('deploy-pct');
+      const duration = 2800;
       const tick     = 30;
       let elapsed    = 0;
 
       const timer = setInterval(() => {
         elapsed += tick;
-        const t = Math.min(elapsed / duration, 1);
-        // Ease-out quad: starts fast, eases toward 100%
+        const t        = Math.min(elapsed / duration, 1);
         const progress = (1 - (1 - t) * (1 - t)) * 100;
+        fill.style.width = progress.toFixed(1) + '%';
+        pct.textContent  = Math.round(progress) + '%';
 
-        fill.style.width  = progress.toFixed(1) + '%';
-        pct.textContent   = Math.round(progress) + '%';
-
-        if (t >= 1) { clearInterval(timer); showDone(); }
+        if (t >= 1) { clearInterval(timer); showSuccess(); }
       }, tick);
     }
 
-    function showDone() {
-      const loadingEl = document.getElementById('loading-inner');
-      const doneEl    = document.getElementById('done-inner');
+    function showSuccess() {
+      const deployState = document.getElementById('deploy-state');
+      const successState = document.getElementById('success-state');
 
-      // Crossfade: loading fades out, done fades in
-      loadingEl.classList.add('hidden');
+      deployState.style.opacity    = '0';
+      deployState.style.transition = 'opacity 0.28s ease';
 
       setTimeout(() => {
-        doneEl.style.display = 'flex';
+        deployState.style.display = 'none';
+        successState.classList.add('visible');
         requestAnimationFrame(() => requestAnimationFrame(() => {
-          doneEl.classList.add('visible');
+          successState.classList.add('animate');
         }));
-      }, 180);
+      }, 280);
+    }
+
+    function showDetail() {
+      const successState = document.getElementById('success-state');
+      const detailState  = document.getElementById('detail-state');
+
+      successState.style.opacity    = '0';
+      successState.style.transition = 'opacity 0.25s ease';
+
+      setTimeout(() => {
+        successState.style.display = 'none';
+        detailState.classList.add('visible');
+        detailState.style.opacity    = '0';
+        detailState.style.transform  = 'translateY(10px)';
+        detailState.style.transition = 'opacity 0.36s ease, transform 0.36s ease';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          detailState.style.opacity   = '1';
+          detailState.style.transform = 'none';
+        }));
+      }, 250);
+    }
+
+    /* ── 頻道展開/收合 ── */
+    function toggleChannel(card) {
+      card.classList.toggle('expanded');
+    }
+
+    /* ── 複製按鈕回饋 ── */
+    function copyFeedback(btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(() => { btn.innerHTML = orig; }, 1200);
     }
   </script>
 
