@@ -1,1317 +1,781 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZenClaw AI</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html { background: #030712; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      color: #f1f5f9;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      isolation: isolate;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: #030712;
-      z-index: -1;
-    }
-
-    /* ── Staging banner ── */
-    .staging-banner {
-      background: #d97706;
-      color: #fff;
-      text-align: center;
-      padding: 8px 16px;
-      font-size: 13px;
-      font-weight: 500;
-      flex-shrink: 0;
-    }
-
-    /* ── Max-width container ── */
-    .inner {
-      width: 100%;
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 0 48px;
-    }
-
-    /* ── Header ── */
-    header {
-      height: 64px;
-      flex-shrink: 0;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(3, 7, 18, 0.75);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      display: flex;
-      align-items: center;
-    }
-
-    header .inner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .logo img { height: 40px; display: block; }
-
-    .header-right { display: flex; align-items: center; gap: 4px; }
-
-    /* ── Lang selector ── */
-    .lang-selector {
-      display: flex; align-items: center; gap: 6px;
-      color: #64748b;
-      font-size: 14px;
-      cursor: pointer;
-      padding: 7px 12px;
-      border-radius: 8px;
-      transition: background 0.15s, color 0.15s;
-      position: relative;
-    }
-    .lang-selector:hover { background: rgba(255,255,255,0.05); color: #cbd5e1; }
-    .lang-selector svg { width: 16px; height: 16px; }
-    .lang-selector .chevron { width: 13px; height: 13px; opacity: 0.5; }
-
-    .lang-dropdown {
-      position: absolute;
-      top: calc(100% + 6px); left: 0;
-      background: #0f172a;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px; padding: 6px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
-      display: none; z-index: 200; min-width: 130px;
-    }
-    .lang-dropdown.open { display: block; }
-    .lang-option {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 12px; border-radius: 7px;
-      font-size: 13.5px; color: #94a3b8; cursor: pointer;
-      transition: background 0.12s;
-    }
-    .lang-option:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
-    .lang-option.active { color: #37b9eb; }
-    .lang-option-check { width: 14px; height: 14px; opacity: 0; }
-    .lang-option.active .lang-option-check { opacity: 1; }
-
-    /* ── Avatar ── */
-    .avatar-wrap {
-      display: flex; align-items: center; gap: 6px;
-      cursor: pointer; padding: 5px 8px; border-radius: 10px;
-      transition: background 0.15s;
-      position: relative;
-    }
-    .avatar-wrap:hover { background: rgba(255,255,255,0.05); }
-
-    .avatar {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: linear-gradient(135deg, #0f2744, #1a3a6b);
-      border: 1.5px solid rgba(55,185,235,0.28);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 600; color: #7dd3fc;
-    }
-
-    .avatar-chevron { width: 14px; height: 14px; opacity: 0.4; color: #94a3b8; }
-
-    /* ── [改善 4] 帳戶下拉選單 ── */
-    .account-dropdown {
-      position: absolute;
-      top: calc(100% + 8px); right: 0;
-      min-width: 252px;
-      background: #0f172a;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-      padding: 16px;
-      display: none; z-index: 200;
-    }
-    .account-dropdown.open { display: block; }
-
-    .account-email { font-size: 13px; color: #94a3b8; margin-bottom: 10px; word-break: break-all; }
-
-    .account-plan-row {
-      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
-    }
-    .account-plan-label { font-size: 13px; color: #64748b; }
-    .plan-badge {
-      background: #d97706; color: #fff;
-      font-size: 11px; font-weight: 700;
-      padding: 2px 8px; border-radius: 4px;
-    }
-    .plan-gear { color: #475569; cursor: pointer; margin-left: auto; }
-    .plan-gear svg { width: 14px; height: 14px; display: block; }
-    .plan-gear:hover { color: #94a3b8; }
-
-    .account-divider { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 10px 0; }
-
-    /* 改善：帳單資訊加上視覺進度條和明確說明 */
-    .billing-block {
-      background: rgba(255,255,255,0.04);
-      border-radius: 8px; padding: 10px 12px;
-    }
-    .billing-label { font-size: 11px; color: #64748b; margin-bottom: 4px; }
-    .billing-amounts { font-size: 13px; color: #e2e8f0; font-weight: 500; }
-    .billing-bar {
-      height: 3px; background: rgba(255,255,255,0.08);
-      border-radius: 99px; margin-top: 7px; overflow: hidden;
-    }
-    .billing-bar-fill {
-      height: 100%; width: 100%;
-      background: linear-gradient(90deg, #37b9eb, #6dd5f5);
-      border-radius: 99px;
-    }
-    .billing-period { font-size: 11px; color: #64748b; margin-top: 5px; }
-
-    .account-logout {
-      display: block; margin-top: 8px;
-      font-size: 13.5px; color: #ef4444;
-      cursor: pointer; padding: 5px 0;
-      transition: color 0.15s; text-decoration: none;
-    }
-    .account-logout:hover { color: #f87171; }
-
-    /* ── Main ── */
-    main { flex: 1; display: flex; flex-direction: column; }
-
-    /* ═══════════════════════════════
-       EMPTY STATE VIEW
-    ═══════════════════════════════ */
-    #view-empty {
-      flex: 1; display: flex; flex-direction: column;
-      padding: 48px 0;
-      transition: opacity 0.35s ease, transform 0.35s ease;
-    }
-    #view-empty .inner { flex: 1; display: flex; flex-direction: column; }
-    #view-empty.leaving { opacity: 0; transform: translateY(-16px); pointer-events: none; }
-
-    .page-title-row {
-      display: flex; align-items: baseline; gap: 12px;
-      margin-bottom: 48px;
-    }
-    .page-title { font-size: 20px; font-weight: 600; color: #f1f5f9; letter-spacing: -0.015em; }
-    .page-subtitle { font-size: 13px; color: #64748b; }
-
-    /* [改善 1] 空白頁：加圖示 + 說明文字 */
-    .empty-center {
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      text-align: center;
-      padding: 60px 0;
-      position: relative;
-    }
-    .empty-center::before {
-      content: '';
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 600px; height: 400px;
-      background: radial-gradient(ellipse at center, rgba(55,185,235,0.06) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .empty-icon {
-      width: 72px; height: 72px;
-      background: linear-gradient(135deg, rgba(55,185,235,0.12), rgba(55,185,235,0.04));
-      border: 1px solid rgba(55,185,235,0.2);
-      border-radius: 20px;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 24px;
-    }
-    .empty-icon svg { width: 34px; height: 34px; color: #37b9eb; }
-
-    .empty-heading {
-      font-size: 22px; font-weight: 600;
-      color: #e2e8f0; letter-spacing: -0.01em;
-      margin-bottom: 10px;
-    }
-    .empty-desc {
-      font-size: 14.5px; color: #94a3b8;
-      line-height: 1.65; max-width: 400px;
-      margin-bottom: 28px;
-    }
-
-    .value-props {
-      display: flex; gap: 28px; margin-bottom: 34px;
-      flex-wrap: wrap; justify-content: center;
-    }
-    .value-prop {
-      display: flex; align-items: center; gap: 7px;
-      font-size: 13px; color: #94a3b8;
-    }
-    .value-prop svg { width: 15px; height: 15px; color: #37b9eb; flex-shrink: 0; }
-
-    /* ── Split button ── */
-    .split-btn-wrap { position: relative; display: inline-flex; }
-
-    .split-btn-main {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 13px 22px;
-      background: #37b9eb; color: #fff;
-      font-size: 14.5px; font-weight: 500;
-      border: none; border-radius: 10px 0 0 10px; cursor: pointer;
-      transition: background 0.18s;
-      box-shadow: 0 0 0 1px rgba(55,185,235,0.3), 0 0 28px rgba(55,185,235,0.2), 0 4px 16px rgba(0,0,0,0.35);
-      letter-spacing: 0.01em;
-    }
-    .split-btn-main:hover { background: #2aace0; }
-
-    .split-btn-chevron {
-      display: inline-flex; align-items: center; justify-content: center;
-      padding: 13px 12px;
-      background: #2aace0; color: #fff;
-      border: none; border-left: 1px solid rgba(255,255,255,0.2);
-      border-radius: 0 10px 10px 0; cursor: pointer;
-      transition: background 0.18s;
-      box-shadow: 0 0 0 1px rgba(55,185,235,0.3), 0 4px 16px rgba(0,0,0,0.35);
-    }
-    .split-btn-chevron:hover { background: #1f9fd4; }
-    .split-btn-chevron svg { width: 14px; height: 14px; }
-
-    /* [改善 2] 下拉選單：兩個選項都有說明文字 */
-    .split-dropdown {
-      position: absolute;
-      top: calc(100% + 6px); left: 0;
-      min-width: 260px;
-      background: #0f172a;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
-      overflow: hidden; display: none; z-index: 50;
-    }
-    .split-dropdown.open { display: block; }
-
-    .split-option {
-      padding: 13px 16px; cursor: pointer;
-      transition: background 0.15s;
-      display: flex; align-items: flex-start; gap: 10px;
-    }
-    .split-option:hover { background: rgba(255,255,255,0.05); }
-    .split-option + .split-option { border-top: 1px solid rgba(255,255,255,0.06); }
-    .split-option-check { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; color: #37b9eb; }
-    .split-option-spacer { width: 16px; flex-shrink: 0; }
-    .split-option-body { flex: 1; }
-    .split-option-name {
-      font-size: 14px; font-weight: 500; color: #e2e8f0;
-      display: flex; align-items: center; gap: 7px;
-    }
-    .split-option-desc { font-size: 12px; color: #94a3b8; margin-top: 3px; line-height: 1.5; }
-    .free-badge {
-      background: rgba(74,222,128,0.12);
-      border: 1px solid rgba(74,222,128,0.2);
-      color: #4ade80; font-size: 11px; font-weight: 600;
-      padding: 1px 7px; border-radius: 4px;
-    }
-
-    /* ═══════════════════════════════
-       DASHBOARD VIEW
-    ═══════════════════════════════ */
-    #view-dashboard {
-      display: none; flex: 1; flex-direction: column;
-      opacity: 0; transform: translateY(16px);
-      transition: opacity 0.42s cubic-bezier(0.4,0,0.2,1), transform 0.42s cubic-bezier(0.4,0,0.2,1);
-      padding: 48px 0;
-    }
-    #view-dashboard.active { display: flex; }
-    #view-dashboard.entering { opacity: 1; transform: none; }
-    #view-dashboard .inner { flex: 1; display: flex; flex-direction: column; gap: 16px; }
-
-    /* ── Instance card ── */
-    .instance-card {
-      background: #080f1f;
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.35);
-      position: relative;
-    }
-    .instance-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(55,185,235,0.35), transparent);
-    }
-
-    /* ── Deploying state ── */
-    .deploy-state {
-      padding: 48px 32px;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      min-height: 200px; text-align: center;
-    }
-    .deploy-spinner-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-
-    .spinner {
-      width: 19px; height: 19px; flex-shrink: 0;
-      border-radius: 50%;
-      border: 2px solid rgba(55,185,235,0.15);
-      border-top-color: #37b9eb;
-      animation: spin 0.75s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .deploy-label { font-size: 13.5px; color: #94a3b8; }
-
-    .deploy-progress-track {
-      width: 300px; max-width: 100%; height: 3px;
-      background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden;
-      margin-bottom: 10px;
-    }
-    .deploy-progress-fill {
-      height: 100%; width: 0%;
-      background: linear-gradient(90deg, #37b9eb, #6dd5f5);
-      border-radius: 99px; transition: width 0.08s linear;
-    }
-    .deploy-pct { font-size: 12px; color: #374151; }
-
-    /* ── Success state ── */
-    .success-state {
-      padding: 48px 32px;
-      display: none; flex-direction: column;
-      align-items: center; justify-content: center;
-      min-height: 200px; text-align: center;
-    }
-    .success-state.visible { display: flex; }
-
-    .check-circle {
-      width: 56px; height: 56px; border-radius: 50%;
-      border: 3px solid #4ade80;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 16px; flex-shrink: 0;
-      opacity: 0; transform: scale(0.55);
-      transition: opacity 0.32s ease, transform 0.38s cubic-bezier(0.34,1.56,0.64,1);
-    }
-    .success-state.animate .check-circle { opacity: 1; transform: scale(1); }
-    .check-circle svg {
-      width: 26px; height: 26px; stroke: #4ade80; stroke-width: 2.5;
-      fill: none; stroke-linecap: round; stroke-linejoin: round;
-      stroke-dasharray: 46; stroke-dashoffset: 46;
-    }
-    .success-state.animate .check-circle svg { animation: draw-check 0.38s 0.22s ease forwards; }
-    @keyframes draw-check { to { stroke-dashoffset: 0; } }
-
-    .success-heading {
-      font-size: 20px; font-weight: 700; color: #f1f5f9;
-      opacity: 0; transform: translateY(7px);
-      transition: opacity 0.28s 0.32s ease, transform 0.28s 0.32s ease;
-    }
-    .success-state.animate .success-heading { opacity: 1; transform: none; }
-
-    .success-sub {
-      font-size: 13px; color: #4ade80; margin-top: 4px;
-      opacity: 0; transform: translateY(7px);
-      transition: opacity 0.28s 0.44s ease, transform 0.28s 0.44s ease;
-    }
-    .success-state.animate .success-sub { opacity: 1; transform: none; }
-
-    .success-desc {
-      font-size: 12.5px; color: #64748b; line-height: 1.6; margin-top: 8px;
-      opacity: 0; transform: translateY(7px);
-      transition: opacity 0.28s 0.54s ease, transform 0.28s 0.54s ease;
-    }
-    .success-state.animate .success-desc { opacity: 1; transform: none; }
-
-    .success-cta {
-      margin-top: 18px; padding: 10px 24px;
-      background: rgba(74,222,128,0.1); color: #4ade80;
-      font-size: 14px; font-weight: 600;
-      border: 1px solid rgba(74,222,128,0.22);
-      border-radius: 8px; cursor: pointer;
-      opacity: 0; transform: translateY(7px);
-      transition: opacity 0.28s 0.64s ease, transform 0.28s 0.64s ease, background 0.18s;
-    }
-    .success-cta:hover { background: rgba(74,222,128,0.18); }
-    .success-state.animate .success-cta { opacity: 1; transform: none; }
-
-    /* ── Detail state ── */
-    .detail-state { display: none; }
-    .detail-state.visible { display: block; }
-
-    /* [改善 5] 實例資訊區：分行顯示，不再擠成一行 */
-    .instance-header { padding: 24px 28px 20px; }
-
-    .instance-status-row {
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 16px; flex-wrap: wrap;
-    }
-    .status-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: rgba(74,222,128,0.1);
-      border: 1px solid rgba(74,222,128,0.22);
-      color: #4ade80; font-size: 12px; font-weight: 500;
-      padding: 3px 10px; border-radius: 20px;
-    }
-    .status-badge svg { width: 11px; height: 11px; }
-    .tier-badge {
-      background: rgba(55,185,235,0.12);
-      border: 1px solid rgba(55,185,235,0.22);
-      color: #7dd3fc; font-size: 12px; font-weight: 500;
-      padding: 3px 10px; border-radius: 20px;
-    }
-
-    .info-grid { display: flex; flex-direction: column; gap: 8px; }
-    .info-row { display: flex; align-items: center; gap: 10px; }
-    .info-label { font-size: 12px; color: #94a3b8; min-width: 76px; }
-    .info-value {
-      font-size: 12.5px; color: #94a3b8;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .copy-btn {
-      color: #475569; cursor: pointer;
-      background: none; border: none; padding: 2px;
-      transition: color 0.15s; line-height: 0;
-    }
-    .copy-btn:hover { color: #94a3b8; }
-    .copy-btn svg { width: 13px; height: 13px; }
-
-    .instance-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); }
-
-    /* [改善 3] ControlUI → 改為更直白的按鈕文字 + tooltip */
-    .instance-actions-top {
-      padding: 18px 28px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    }
-    .control-btn {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 10px 20px;
-      background: #37b9eb; color: #fff;
-      font-size: 14px; font-weight: 500;
-      border: none; border-radius: 9px; cursor: pointer;
-      transition: background 0.18s;
-      box-shadow: 0 0 18px rgba(55,185,235,0.2);
-    }
-    .control-btn:hover { background: #2aace0; }
-    .control-btn svg { width: 14px; height: 14px; }
-
-    /* Tooltip */
-    .tooltip-wrap { position: relative; display: inline-flex; }
-    .tooltip {
-      position: absolute;
-      bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
-      background: #1e293b;
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #cbd5e1; font-size: 12px; line-height: 1.5;
-      padding: 8px 12px; border-radius: 8px;
-      white-space: normal; text-align: center;
-      max-width: 220px; width: max-content;
-      pointer-events: none; opacity: 0;
-      transition: opacity 0.15s; z-index: 50;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    }
-    .tooltip::after {
-      content: '';
-      position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-      border: 5px solid transparent;
-      border-top-color: #1e293b;
-    }
-    .tooltip-wrap:hover .tooltip { opacity: 1; }
-
-    /* [改善 6] 模型列：重整圖示有 tooltip，模型名稱有別名 */
-    .model-row {
-      padding: 14px 28px;
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    }
-    .model-label { font-size: 13px; color: #94a3b8; }
-    .model-refresh-btn {
-      color: #475569; background: none; border: none;
-      padding: 3px; border-radius: 4px;
-      cursor: pointer; display: flex; align-items: center;
-      transition: color 0.15s;
-    }
-    .model-refresh-btn:hover { color: #94a3b8; }
-    .model-refresh-btn svg { width: 14px; height: 14px; }
-    .model-selector {
-      display: flex; align-items: center; gap: 6px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 8px; padding: 5px 10px;
-      cursor: pointer; transition: background 0.15s;
-    }
-    .model-selector:hover { background: rgba(255,255,255,0.07); }
-    .model-name { font-size: 13px; color: #e2e8f0; }
-    .model-alias { font-size: 11.5px; color: #94a3b8; }
-    .model-chevron { width: 13px; height: 13px; color: #475569; }
-    .litellm-badge {
-      background: rgba(139,92,246,0.12);
-      border: 1px solid rgba(139,92,246,0.2);
-      color: #a78bfa; font-size: 11px; font-weight: 500;
-      padding: 2px 8px; border-radius: 4px;
-    }
-
-    /* ── Channels ── */
-    .channels-section { padding: 20px 28px 0; }
-    .channels-heading {
-      font-size: 12px; font-weight: 600; color: #94a3b8;
-      text-transform: uppercase; letter-spacing: 0.07em;
-      margin-bottom: 10px;
-    }
-
-    .channel-card {
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 12px; margin-bottom: 8px;
-      overflow: hidden; background: rgba(255,255,255,0.015);
-    }
-    .channel-header {
-      display: flex; align-items: center;
-      padding: 13px 16px; cursor: pointer; gap: 12px;
-      transition: background 0.15s;
-      user-select: none;
-    }
-    .channel-header:hover { background: rgba(255,255,255,0.03); }
-
-    .channel-icon {
-      width: 32px; height: 32px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .channel-name { font-size: 14px; font-weight: 500; color: #e2e8f0; }
-    .channel-desc-short { font-size: 12px; color: #94a3b8; margin-top: 1px; }
-    .channel-meta { flex: 1; }
-
-    .connected-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      color: #4ade80; font-size: 12px; font-weight: 500; flex-shrink: 0;
-    }
-    .connected-badge svg { width: 12px; height: 12px; }
-
-    .channel-chevron {
-      width: 16px; height: 16px; color: #475569;
-      flex-shrink: 0; transition: transform 0.2s;
-    }
-    .channel-card.expanded .channel-chevron { transform: rotate(180deg); }
-
-    .channel-body {
-      display: none;
-      padding: 0 16px 16px;
-      border-top: 1px solid rgba(255,255,255,0.06);
-    }
-    .channel-card.expanded .channel-body { display: block; }
-
-    /* MixerBox connected body */
-    .bot-name-row {
-      display: flex; align-items: center; gap: 8px; padding: 12px 0 10px;
-    }
-    .bot-avatar {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: linear-gradient(135deg, #1e3a5f, #0f2744);
-      border: 1.5px solid rgba(55,185,235,0.2);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; color: #7dd3fc; flex-shrink: 0;
-    }
-    .bot-name { font-size: 13.5px; color: #e2e8f0; font-weight: 500; }
-    .edit-icon-btn {
-      color: #475569; background: none; border: none; padding: 2px;
-      cursor: pointer; transition: color 0.15s; line-height: 0;
-    }
-    .edit-icon-btn:hover { color: #94a3b8; }
-    .edit-icon-btn svg { width: 13px; height: 13px; }
-
-    .open-chat-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 14px;
-      background: rgba(55,185,235,0.1);
-      border: 1px solid rgba(55,185,235,0.2);
-      color: #37b9eb; font-size: 13px; font-weight: 500;
-      border-radius: 7px; cursor: pointer;
-      transition: background 0.15s;
-    }
-    .open-chat-btn:hover { background: rgba(55,185,235,0.16); }
-    .open-chat-btn svg { width: 13px; height: 13px; }
-
-    .plugin-row {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-top: 12px; padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,0.05);
-    }
-    .plugin-version { font-size: 11.5px; color: #64748b; }
-    .latest-badge {
-      background: rgba(55,185,235,0.1);
-      border: 1px solid rgba(55,185,235,0.18);
-      color: #37b9eb; font-size: 11px; font-weight: 500;
-      padding: 1px 7px; border-radius: 4px;
-    }
-
-    /* Pairing body */
-    .pairing-body { padding: 12px 0 2px; }
-    .pairing-title { font-size: 13px; font-weight: 600; color: #e2e8f0; margin-bottom: 10px; }
-    .pairing-notice {
-      background: rgba(251,191,36,0.08);
-      border: 1px solid rgba(251,191,36,0.18);
-      border-radius: 8px; padding: 10px 12px;
-      font-size: 12px; color: #fbbf24; line-height: 1.55;
-      margin-bottom: 14px;
-    }
-    .pairing-steps {
-      list-style: none; counter-reset: steps;
-      margin-bottom: 16px;
-    }
-    .pairing-steps li {
-      counter-increment: steps;
-      display: flex; align-items: flex-start; gap: 10px;
-      font-size: 12.5px; color: #94a3b8; line-height: 1.55;
-      margin-bottom: 8px;
-    }
-    .pairing-steps li::before {
-      content: counter(steps);
-      width: 20px; height: 20px; border-radius: 50%;
-      background: rgba(55,185,235,0.12);
-      border: 1px solid rgba(55,185,235,0.2);
-      color: #37b9eb; font-size: 11px; font-weight: 600;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; margin-top: 1px;
-    }
-    .pairing-steps a { color: #37b9eb; text-decoration: none; }
-    .pairing-steps a:hover { text-decoration: underline; }
-
-    /* [改善 8] LINE 配對按鈕：從綠色改為藍色，與主 CTA 顏色系統一致 */
-    .pairing-btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 9px 18px;
-      background: rgba(55,185,235,0.12);
-      border: 1px solid rgba(55,185,235,0.25);
-      color: #37b9eb; font-size: 13px; font-weight: 600;
-      border-radius: 8px; cursor: pointer;
-      transition: background 0.15s;
-    }
-    .pairing-btn:hover { background: rgba(55,185,235,0.2); }
-
-    /* ── Instance footer ── */
-    .instance-footer { padding: 20px 28px 24px; }
-
-    /* [改善 7] 標籤區塊加上說明文字 */
-    .tags-section { margin-bottom: 16px; }
-    .tags-label { font-size: 11.5px; color: #64748b; margin-bottom: 7px; }
-    .tags-add {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px dashed rgba(255,255,255,0.12);
-      border-radius: 20px; color: #64748b;
-      font-size: 12.5px; cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
-    }
-    .tags-add:hover { border-color: rgba(255,255,255,0.22); color: #64748b; }
-    .tags-add svg { width: 12px; height: 12px; }
-
-    /* [改善 11] 危險操作視覺分離 */
-    .instance-actions-bottom {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    }
-    .action-btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 8px 16px;
-      background: transparent;
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #94a3b8; font-size: 13px;
-      border-radius: 8px; cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
-    }
-    .action-btn svg { width: 13px; height: 13px; }
-    .action-btn:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.18); color: #e2e8f0; }
-
-    .action-btn-spacer { flex: 1; }
-
-    .delete-btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 8px 16px;
-      background: transparent;
-      border: 1px solid rgba(239,68,68,0.28);
-      color: #ef4444; font-size: 13px;
-      border-radius: 8px; cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .delete-btn svg { width: 13px; height: 13px; }
-    .delete-btn:hover { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.4); }
-
-    /* ── Add instance row ── */
-    .add-instance-row { }
-    .add-split-wrap { position: relative; display: inline-flex; }
-    .add-split-main {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 10px 18px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #94a3b8; font-size: 13.5px;
-      border-radius: 9px 0 0 9px; cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-    }
-    .add-split-main:hover { background: rgba(255,255,255,0.07); color: #e2e8f0; }
-    .add-split-main svg { width: 14px; height: 14px; }
-    .add-split-chevron {
-      display: inline-flex; align-items: center; justify-content: center;
-      padding: 10px 10px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1); border-left: none;
-      color: #64748b;
-      border-radius: 0 9px 9px 0; cursor: pointer;
-      transition: background 0.15s;
-    }
-    .add-split-chevron:hover { background: rgba(255,255,255,0.07); }
-    .add-split-chevron svg { width: 13px; height: 13px; }
-
-    /* ── Footer ── */
-    footer {
-      text-align: center; padding: 32px 16px;
-      font-size: 12px; color: #334155; line-height: 1.8;
-    }
-    footer a { color: #475569; text-decoration: none; }
-    footer a:hover { color: #64748b; }
-  </style>
-</head>
-<body>
-
-  <div class="staging-banner">Staging Environment — changes here don't affect real users</div>
-
-  <header>
-    <div class="inner">
-      <a href="#" class="logo">
-        <img src="Images/zenclaw-logo-zh.png" alt="MixerBox AI ZenClaw" />
-      </a>
-      <div class="header-right">
-
-        <!-- Language selector -->
-        <div class="lang-selector" id="lang-trigger" onclick="toggleDropdown(event,'lang-dd')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          </svg>
-          <span>中文</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-          <div class="lang-dropdown" id="lang-dd">
-            <div class="lang-option active">
-              <svg class="lang-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              中文
-            </div>
-            <div class="lang-option">
-              <svg class="lang-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              English
-            </div>
-          </div>
+<html lang="zh" class="dark"><head><base href="https://dev.zenclaw.ai/"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>只要 9 秒，您的「黃仁勳版龍蝦」AI 員工立刻上工！</title><meta name="description" content="專為中小企業打造！輕鬆導入「黃仁勳版龍蝦 AI」NVIDIA NemoClaw，幫您大幅提升工作效率，領先同行！"><!-- Favicon --><link rel="icon" type="image/png" href="/favicon.png"><!-- OG Tags --><meta property="og:title" content="只要 9 秒，您的「黃仁勳版龍蝦」AI 員工立刻上工！"><meta property="og:description" content="專為中小企業打造！輕鬆導入「黃仁勳版龍蝦 AI」NVIDIA NemoClaw，幫您大幅提升工作效率，領先同行！"><meta property="og:image" content="https://dev.zenclaw.ai/og-image-zh-20260402.png"><meta property="og:url" content="https://dev.zenclaw.ai/zh/dashboard/"><meta property="og:type" content="website"><meta property="og:site_name" content="ZenClaw AI"><!-- Twitter --><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="只要 9 秒，您的「黃仁勳版龍蝦」AI 員工立刻上工！"><meta name="twitter:description" content="專為中小企業打造！輕鬆導入「黃仁勳版龍蝦 AI」NVIDIA NemoClaw，幫您大幅提升工作效率，領先同行！"><meta name="twitter:image" content="https://dev.zenclaw.ai/og-image-zh-20260402.png"><!-- hreflang --><link rel="alternate" hreflang="x-default" href="https://zenclaw.ai/"><link rel="alternate" hreflang="zh" href="https://zenclaw.ai/zh/"><link rel="alternate" hreflang="ja" href="https://zenclaw.ai/ja/"><link rel="alternate" hreflang="en" href="https://dev.zenclaw.ai/"><link rel="canonical" href="https://dev.zenclaw.ai/zh/dashboard/"><meta name="robots" content="noindex, nofollow"><!-- Global Organization + WebSite schema (every page) --><script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"ZenClaw","alternateName":["ZenClaw AI","MixerBox AI ZenClaw"],"url":"https://zenclaw.ai","logo":"https://dev.zenclaw.ai/zenclaw-logo.png","description":"ZenClaw is MixerBox AI's managed service for OpenClaw and NemoClaw. Deploy an AI-agent installation in 9 seconds.","sameAs":["https://www.mixerbox.com","https://www.linkedin.com/company/mixerbox"],"foundingOrganization":{"@type":"Organization","name":"MixerBox Inc.","url":"https://www.mixerbox.com"}}</script><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"ZenClaw","url":"https://zenclaw.ai","inLanguage":["en","zh-TW","ja"],"publisher":{"@type":"Organization","name":"ZenClaw","url":"https://zenclaw.ai"},"potentialAction":{"@type":"SearchAction","target":"https://zenclaw.ai/?q={search_term_string}","query-input":"required name=search_term_string"}}</script><link rel="stylesheet" href="/_astro/_slug_.C8LSqn2e.css">
+<style>.celebration-entrance{animation:fadeScaleIn .4s ease-out}.celebration-circle{stroke-dasharray:63;stroke-dashoffset:63;animation:drawCircle .4s ease-out .1s forwards}.celebration-check{stroke-dasharray:20;stroke-dashoffset:20;animation:drawCheck .3s ease-out .4s forwards}@keyframes fadeScaleIn{0%{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}@keyframes drawCircle{to{stroke-dashoffset:0}}@keyframes drawCheck{to{stroke-dashoffset:0}}.celebration-text{animation:fadeSlideUp .3s ease-out 1s both}.celebration-elapsed{animation:fadeSlideUp .3s ease-out 1.4s both}.celebration-subtext{animation:fadeSlideUp .3s ease-out 1.8s both}.celebration-cta{animation:fadeSlideUp .3s ease-out 2.5s both}@keyframes fadeSlideUp{0%{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.celebration-exit{animation:fadeOut .3s ease-in forwards}.celebration-enter{animation:fadeIn .3s ease-out both}@keyframes fadeOut{0%{opacity:1}to{opacity:0}}@keyframes fadeIn{0%{opacity:0}to{opacity:1}}.card-celebrate{animation:cardGlow 1.2s ease-out}@keyframes cardGlow{0%{border-color:#10b981;box-shadow:0 0 20px #10b9814d}to{border-color:#374151;box-shadow:none}}
+</style><link rel="preconnect" href="https://g-3aff885078c1ed07.zenclaw.bot" crossorigin=""><link rel="dns-prefetch" href="https://g-3aff885078c1ed07.zenclaw.bot"><link rel="prefetch" href="https://g-3aff885078c1ed07.zenclaw.bot/chat"></head> <body class="bg-gray-950 text-gray-100 antialiased"> <div class="fixed top-0 left-0 right-0 z-50 bg-amber-600 text-black text-center text-sm font-medium py-1.5">
+Staging Environment — changes here don't affect real users
+</div>  <header class="fixed left-0 right-0 z-50 border-b border-gray-800/50 bg-gray-950/80 backdrop-blur-md top-8"> <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8"> <div class="flex h-16 items-center justify-between"> <!-- Logo --> <a href="/zh/" class="flex items-center gap-2"> <img src="/zenclaw-logo-zh.png" alt="ZenClaw AI" class="h-10 w-auto"> </a> <!-- Nav links (hidden on mobile, hidden on dashboard) -->  <!-- Right side: CTA + hamburger + language switcher + user menu --> <div class="flex items-center gap-3">     <div id="lang-switcher" class="relative"> <button id="lang-trigger" class="flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-white"> <!-- Globe icon --> <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z"></path> <path stroke-linecap="round" stroke-linejoin="round" d="M3.6 9h16.8M3.6 15h16.8"></path> <path stroke-linecap="round" stroke-linejoin="round" d="M12 3a15 15 0 014 9 15 15 0 01-4 9 15 15 0 01-4-9 15 15 0 014-9z"></path> </svg> <span>中文</span> <!-- Chevron down --> <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path> </svg> </button> <!-- Dropdown --> <div id="lang-dropdown" class="absolute right-0 top-full mt-2 hidden min-w-[8rem] overflow-hidden rounded-lg border border-gray-700 bg-gray-800 shadow-xl"> <a href="/" class="flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-gray-700/50 text-gray-400">  <span class="inline-block w-4"></span> EN </a><a href="/zh/" class="flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-gray-700/50 font-medium text-white"> <svg class="h-4 w-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path> </svg>  中文 </a><a href="/ja/" class="flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-gray-700/50 text-gray-400">  <span class="inline-block w-4"></span> 日本語 </a> </div> </div> <script type="module">const o=document.getElementById("lang-switcher"),d=document.getElementById("lang-trigger"),t=document.getElementById("lang-dropdown");d.addEventListener("click",e=>{e.stopPropagation(),t.classList.toggle("hidden")});t.querySelectorAll("a").forEach(e=>{e.addEventListener("click",()=>{const n=(e.getAttribute("href")||"/").match(/^\/(zh|ja)\//),c=n?n[1]:"en";localStorage.setItem("preferred-locale",c)})});document.addEventListener("click",e=>{o.contains(e.target)||t.classList.add("hidden")});</script> <!-- User menu: hidden by default, inline script below shows loading spinner if cookie exists --> <div id="user-menu-wrap" class="relative"> <button id="user-menu-trigger" class="flex items-center gap-1.5 rounded-full px-1 py-1 transition-colors hover:bg-gray-800" style=""> <span id="user-menu-initials" class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium bg-brand-600/20 text-brand-400 ring-yellow-400/70 ring-2 ring-yellow-400/60">K</span> <svg id="user-menu-chevron" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path> </svg> </button> <!-- Dropdown --> <div id="user-menu-dropdown" class="absolute right-0 top-full mt-2 hidden w-56 overflow-hidden rounded-lg border border-gray-700 bg-gray-800 shadow-xl"> <div class="border-b border-gray-700 px-4 py-4"> <p id="user-menu-email" class="truncate text-sm text-gray-400">kitty10081008@gmail.com</p> <span class="flex items-center gap-1.5 mt-2"> <span id="user-menu-plan-label" class="text-xs text-gray-400">方案</span> <span id="user-menu-plan" class="inline-block rounded px-2 py-0.5 text-xs font-semibold bg-yellow-400/20 text-yellow-300">Scale</span> <span class="relative" id="plan-gear-wrap"> <button id="plan-gear-btn" type="button" class="inline-flex items-center justify-center h-5 w-5 rounded text-gray-500 hover:text-gray-300 hover:bg-gray-700/50 transition-colors" title="Manage subscription"> <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path></svg> </button> <div id="plan-gear-menu" class="hidden absolute left-0 top-full mt-1 w-40 rounded-lg border border-gray-700 bg-gray-800 shadow-xl z-50 overflow-hidden"> <button id="user-menu-cancel-plan" type="button" class="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-gray-700/50 transition-colors"> 取消訂閱 </button> </div> </span> </span> <div class="mt-1.5 flex items-center gap-2 flex-wrap"> <span id="user-menu-trial" class="hidden rounded px-2 py-0.5 text-xs font-semibold bg-emerald-500/20 text-emerald-400 whitespace-nowrap"></span> <button id="user-menu-end-now" type="button" class="hidden text-[11px] text-red-400 hover:text-red-300 underline underline-offset-2"></button> </div> </div> <!-- Budget section (all logged-in users) --> <div id="user-menu-budget-section" class="border-t border-gray-700 px-4 py-2.5"> <p id="user-menu-budget" class="text-xs text-gray-400">$270.02 / $270.00 14 天內</p> </div> <!-- Debug section (whitelist users only) --> <div id="user-menu-debug" class="border-t border-gray-700 px-4 py-3"> <p class="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-2">Debug (<span id="debug-domain">(DEV ONLY)</span>)</p> <label class="flex items-center gap-2 text-xs text-gray-500 select-none cursor-pointer mb-2"> <input type="checkbox" id="debug-simulate-new-user" class="sr-only"> <span id="debug-sim-track" class="relative inline-flex h-4 w-7 items-center rounded-full bg-gray-600 transition-colors shrink-0"> <span id="debug-sim-thumb" class="absolute left-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform"></span> </span>
+Simulate new user
+</label> <p id="debug-registered-at" class="text-xs text-gray-500">2026-04-01 21:31:26 (UTC+8)</p> </div> <div id="user-menu-debug-separator" class="border-t border-gray-700"></div> <button id="user-menu-signout" class="w-full px-4 py-2.5 text-left text-sm text-red-400 transition-colors hover:bg-gray-700/50" data-label="登出"> 登出 </button> </div> </div> </div> </div> </div> </header>   <!-- Show avatar loading spinner immediately if user has access_token cookie.
+     This is a regular (non-module) script so it runs synchronously before first paint. --> <script>
+(function() {
+  if (document.cookie.indexOf('access_token=') === -1) return;
+  var wrap = document.getElementById('user-menu-wrap');
+  var initials = document.getElementById('user-menu-initials');
+  var trigger = document.getElementById('user-menu-trigger');
+  if (wrap && initials) {
+    wrap.classList.remove('invisible');
+    initials.classList.remove('bg-brand-600/20', 'text-brand-400');
+    initials.classList.add('avatar-loading');
+    if (trigger) trigger.style.pointerEvents = 'none';
+    // chevron uses invisible class by default — no need to hide here
+  }
+})();
+</script> <!-- Cancel subscription confirm dialog --> <div id="hdr-confirm-dialog" class="fixed inset-0 z-[60] hidden"> <div id="hdr-confirm-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div> <div class="relative flex min-h-full items-center justify-center p-4"> <div class="w-full max-w-sm rounded-2xl border border-gray-700 bg-gray-900 p-6 text-center shadow-xl"> <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10"> <svg class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"></path> </svg> </div> <h3 class="text-lg font-semibold text-white mb-2">取消訂閱</h3> <p class="text-sm text-gray-400 mb-5">確定要取消訂閱嗎？取消後，您將在帳期結束時失去進階功能的使用權。</p> <div class="flex gap-3 justify-center"> <button id="hdr-confirm-cancel" type="button" class="rounded-lg border border-gray-600 px-5 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-700">保留方案</button> <button id="hdr-confirm-ok" type="button" class="rounded-lg bg-red-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-600">取消方案</button> </div> </div> </div> </div> <!-- Logout confirm dialog --> <div id="hdr-logout-dialog" class="fixed inset-0 z-[60] hidden"> <div id="hdr-logout-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div> <div class="relative flex min-h-full items-center justify-center p-4"> <div class="w-full max-w-sm rounded-2xl border border-gray-700 bg-gray-900 p-6 text-center shadow-xl"> <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-500/10"> <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3-3h-9m9 0l-3-3m3 3l-3 3"></path> </svg> </div> <h3 class="text-lg font-semibold text-white mb-2">登出</h3> <p class="text-sm text-gray-400 mb-5">確定要登出嗎？</p> <div class="flex gap-3 justify-center"> <button id="hdr-logout-cancel" type="button" class="rounded-lg border border-gray-600 px-5 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-700">取消</button> <button id="hdr-logout-ok" type="button" class="rounded-lg bg-red-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-600">登出</button> </div> </div> </div> </div> <span id="hdr-api-url" class="hidden" data-url="https://y6eto3cvn4xhkwdpku32n5op2y0rjvtb.lambda-url.us-east-1.on.aws"></span> <span id="hdr-i18n" class="hidden" data-cancel-success="已取消訂閱" data-cancel-success-desc="您的訂閱已取消。在帳期結束前仍可使用進階功能。" data-cancel-success-ok="知道了" data-end-now-label="立即終止" data-end-now-title="立即終止訂閱？" data-end-now-desc="你會立即失去付費方案的預算與權限，且無法退費剩餘天數。" data-end-now-confirm="立即終止" data-end-now-success-desc="你的訂閱已立即終止。"></span>  <!-- Spacer for fixed header --> <div class="h-24"></div> <script type="module" src="/_astro/Header.astro_astro_type_script_index_0_lang.BVxZpTpk.js"></script> <main class="min-h-[calc(100vh-8rem)] px-4 py-12"> <div class="mx-auto max-w-2xl"> <h1 id="dash-title" class="text-2xl font-bold text-white mb-8">OpenClaw 實例</h1> <p id="dash-summary" class="text-sm text-gray-400 -mt-6 mb-8">1 個就緒、0 個部署中</p> <!-- Loading state --> <div id="dash-loading" class="text-center py-16 hidden"> <div class="mx-auto h-10 w-10 rounded-full border-4 border-gray-700 border-t-brand-600 animate-spin"></div> </div> <!-- Empty state --> <div id="dash-empty" class="hidden text-center py-16"> <p id="dash-empty-msg" class="text-gray-400 mb-6">尚無 OpenClaw 安裝。</p> <!-- Split-button cluster: Dedicated / Standard (staging or internal users) --> <div class="box-selector-split relative inline-flex items-stretch"> <button id="dash-deploy-empty" type="button" class="inline-flex items-center gap-2 rounded-l-lg bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"> <span class="deploy-spinner hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span> <span class="deploy-label">新增專屬主機</span> <span class="deploy-free-badge hidden rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">免費</span> </button> <button id="dash-deploy-empty-caret" type="button" aria-label="Choose deployment type" class="inline-flex items-center rounded-r-lg border-l border-brand-700 bg-brand-600 px-2.5 py-2.5 text-white transition-colors hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"> <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"></path> </svg> </button> <div id="dash-deploy-empty-menu" class="deploy-menu absolute left-1/2 -translate-x-1/2 top-full mt-2 hidden w-80 rounded-lg border border-gray-700 bg-gray-900 p-1.5 shadow-xl z-20 text-left"></div> </div> <!-- Legacy single button (non-internal prod users) --> <button id="dash-deploy-empty-legacy" type="button" class="box-selector-legacy inline-flex items-center gap-2 rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed hidden"> <span class="deploy-spinner hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span> <span class="deploy-label">新增 OpenClaw 安裝</span> </button> <p id="dash-limit-msg-empty" class="hidden mt-3 text-sm text-amber-400"></p> </div> <!-- Instance list --> <div id="dash-list" class="space-y-6"> <!-- Cards injected here by JS --> <div class="rounded-2xl border border-gray-700 bg-gray-900 p-6" data-gateway-id="g-3aff885078c1ed07">
+      <div class="mb-4 flex flex-col gap-1.5">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-600/15 px-3 py-1 text-sm font-medium text-brand-400 shrink-0">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+            你的安裝已就緒！
+          </span>
+          <span class="inline-flex items-center rounded-full bg-sky-500/15 px-2.5 py-0.5 text-xs font-medium text-sky-300 shrink-0">專屬</span>
         </div>
 
-        <!-- Avatar -->
-        <div class="avatar-wrap" onclick="toggleDropdown(event,'acct-dd')">
-          <div class="avatar">K</div>
-          <svg class="avatar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-          <!-- [改善 4] 帳戶選單：清楚的計費資訊 -->
-          <div class="account-dropdown" id="acct-dd">
-            <div class="account-email">kitty10081008@gmail.com</div>
-            <div class="account-plan-row">
-              <span class="account-plan-label">方案</span>
-              <span class="plan-badge">Scale</span>
-              <span class="plan-gear">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-              </span>
-            </div>
-            <hr class="account-divider"/>
-            <div class="billing-block">
-              <div class="billing-label">本計費週期用量</div>
-              <div class="billing-amounts">$270.02 / $270.00</div>
-              <div class="billing-bar"><div class="billing-bar-fill"></div></div>
-              <div class="billing-period">計費週期剩餘 14 天</div>
-            </div>
-            <hr class="account-divider"/>
-            <a class="account-logout" href="#">登出</a>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </header>
-
-  <main>
-
-    <!-- ═══ 空白狀態 ═══ -->
-    <div id="view-empty">
-      <div class="inner">
-        <div class="page-title-row">
-          <span class="page-title">OpenClaw 實例</span>
-          <span class="page-subtitle">0 個就緒、0 個部署中</span>
-        </div>
-
-        <!-- [改善 1] 空白頁加圖示 + 產品說明 + 價值亮點 -->
-        <div class="empty-center">
-          <div class="empty-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <path d="M8 21h8M12 17v4"/>
-              <path d="M7 8h.01M11 8h5M7 11.5h8"/>
+        <div class="flex items-center gap-1.5 min-w-0 pl-0.5">
+          <span class="text-xs text-gray-400 shrink-0">主機網址:</span>
+          <span class="text-sm text-gray-300 font-mono break-all">g-3aff885078c1ed07.zenclaw.bot</span>
+          <button type="button" class="gid-copy-btn shrink-0 rounded p-0.5 text-gray-500 hover:text-gray-300 transition-colors" data-copy="g-3aff885078c1ed07.zenclaw.bot" aria-label="Copy" title="Copy">
+            <svg class="gid-copy-icon h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path>
             </svg>
-          </div>
-          <div class="empty-heading">建立你的第一個 AI 助理</div>
-          <div class="empty-desc">OpenClaw 幫你在幾秒內部署一個專屬 AI 助理，省去數小時的繁瑣設定，並即時接入 LINE、Telegram 等常用平台。</div>
+            <svg class="gid-copied-icon hidden h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
+            </svg>
+          </button>
+        </div>
 
-          <div class="value-props">
-            <div class="value-prop">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-              </svg>
-              9 秒完成部署
-            </div>
-            <div class="value-prop">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-              多平台一鍵整合
-            </div>
-            <div class="value-prop">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
-              </svg>
-              自選 AI 模型
+        <div class="flex items-center gap-1.5 min-w-0 pl-0.5">
+          <span class="text-xs text-gray-400 shrink-0">代理人信箱:</span>
+          <span class="text-sm text-gray-300 font-mono break-all">zenclaw-mpanjhnl-bu3@clawmail.me</span>
+          <button type="button" class="email-copy-btn shrink-0 rounded p-0.5 text-gray-500 hover:text-gray-300 transition-colors" data-copy="zenclaw-mpanjhnl-bu3@clawmail.me" aria-label="Copy" title="Copy">
+            <svg class="email-copy-icon h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"></path>
+            </svg>
+            <svg class="email-copied-icon hidden h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- relative wrapper for stopped overlay. Everything from "Visit
+           Control UI" downward (Open ControlUI, model + language selectors,
+           channels, actions) is unsafe when the instance is sleeping — they
+           all 502 or queue SSM at a stopped EC2. The dim + overlay region
+           keeps the Wake Up CTA as the single visible action. Header
+           identifiers (badges, domain, ClawMail email) and a label pill
+           stay sharp above so users can still tell which assistant card
+           this is. -->
+      <div class="relative">
+        
+        <div class="">
+      <a href="https://g-3aff885078c1ed07.zenclaw.bot/chat?session=agent:main:main&amp;token=Vagc9uTyTFtec6L6xmL-OlDaJDBbwyQY#token=Vagc9uTyTFtec6L6xmL-OlDaJDBbwyQY" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-500 w-full sm:w-auto">
+        開啟 ControlUI
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path>
+        </svg>
+      </a>
+
+      <div class="model-wrap mt-6">
+        <div class="flex items-center gap-2 mb-2">
+          <label class="model-label text-sm font-medium text-gray-400 shrink-0">模型</label>
+          <button type="button" class="model-refresh-btn shrink-0 p-0.5 text-gray-500 hover:text-gray-300 transition-colors" title="重新讀取模型">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M21.015 4.356v4.992"></path></svg>
+          </button>
+          <button type="button" class="model-save-btn ml-auto hidden rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">套用</button>
+          <div class="model-status-wrap hidden flex items-center gap-2">
+            <div class="model-spinner h-4 w-4 shrink-0 rounded-full border-2 border-gray-600 border-t-brand-500 animate-spin"></div>
+            <span class="model-status-text text-sm text-gray-400"></span>
+          </div>
+        </div>
+        <!-- Custom model picker -->
+        <div class="model-custom-picker relative z-20">
+          <button type="button" class="model-picker-trigger w-full flex items-center justify-between gap-2 rounded-lg border border-gray-600 bg-gray-800 px-3 py-2.5 text-sm text-white hover:border-gray-500 transition-colors">
+            <span class="model-display model-picker-label truncate text-left">minimax-m2.5-routed</span>
+            <svg class="model-picker-chevron h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"></path></svg>
+          </button>
+          <div class="model-picker-panel hidden absolute left-0 right-0 top-full mt-1 rounded-xl border border-gray-600 bg-gray-800 shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-30">
+            <div class="p-2 space-y-0.5 max-h-[400px] overflow-y-auto">
+              <button type="button" class="model-option w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-gray-700" data-value="anthropic/claude-sonnet-4.6" data-label="Claude Sonnet 4.6">
+                <div class="model-option-indicator w-5 h-5 shrink-0 rounded-full border-2 border-gray-600 flex items-center justify-center transition-colors">
+                  <svg class="model-option-check h-3 w-3 text-white hidden" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-white">Claude Sonnet 4.6</p>
+                  <p class="text-xs text-gray-400 mt-0.5">平衡速度與品質，適合大多數日常任務</p>
+                </div>
+                <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-500/15 text-sky-300">支援圖片上傳</span>
+              </button>
+              <button type="button" class="model-option w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-gray-700" data-value="anthropic/claude-opus-4.6" data-label="Claude Opus 4.6">
+                <div class="model-option-indicator w-5 h-5 shrink-0 rounded-full border-2 border-gray-600 flex items-center justify-center transition-colors">
+                  <svg class="model-option-check h-3 w-3 text-white hidden" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-white">Claude Opus 4.6</p>
+                  <p class="text-xs text-gray-400 mt-0.5">適合複雜任務與高品質需求</p>
+                </div>
+                <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-500/15 text-sky-300">支援圖片上傳</span>
+              </button>
+              <button type="button" class="model-option w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-gray-700" data-value="anthropic/claude-haiku-4.5" data-label="Claude Haiku 4.5">
+                <div class="model-option-indicator w-5 h-5 shrink-0 rounded-full border-2 border-gray-600 flex items-center justify-center transition-colors">
+                  <svg class="model-option-check h-3 w-3 text-white hidden" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-white">Claude Haiku 4.5</p>
+                  <p class="text-xs text-gray-400 mt-0.5">回應速度快，適合簡單問題或快速對話</p>
+                </div>
+                <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-500/15 text-sky-300">支援圖片上傳</span>
+              </button>
+              <button type="button" class="model-option w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-gray-700" data-value="moonshotai/kimi-k2.5" data-label="Kimi K2.5">
+                <div class="model-option-indicator w-5 h-5 shrink-0 rounded-full border-2 border-gray-600 flex items-center justify-center transition-colors">
+                  <svg class="model-option-check h-3 w-3 text-white hidden" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-white">Kimi K2.5</p>
+                  <p class="text-xs text-gray-400 mt-0.5">適合閱讀長篇文件、整理資訊與摘要</p>
+                </div>
+                <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-500/15 text-sky-300">支援圖片上傳</span>
+              </button>
+              <button type="button" class="model-option w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-gray-700" data-value="minimax/minimax-m2.5" data-label="MiniMax M2.5 (OpenRouter)">
+                <div class="model-option-indicator w-5 h-5 shrink-0 rounded-full border-2 border-gray-600 flex items-center justify-center transition-colors">
+                  <svg class="model-option-check h-3 w-3 text-white hidden" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-white">MiniMax M2.5</p>
+                  <p class="text-xs text-gray-400 mt-0.5">適合一般對話與日常問題</p>
+                </div>
+                <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-600/60 text-gray-400">僅文字</span>
+              </button>
+              <button type="button" class="model-option w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-gray-700" data-value="bedrock/nvidia.nemotron-super-3-120b" data-label="Nemotron Super 3 120B">
+                <div class="model-option-indicator w-5 h-5 shrink-0 rounded-full border-2 border-gray-600 flex items-center justify-center transition-colors">
+                  <svg class="model-option-check h-3 w-3 text-white hidden" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-white">Nemotron Super 3 120B</p>
+                  <p class="text-xs text-gray-400 mt-0.5">適合邏輯推理、程式設計與數學計算</p>
+                </div>
+                <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-600/60 text-gray-400">僅文字</span>
+              </button>
+              <button type="button" class="model-option w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-gray-700" data-value="nvidia/nemotron-3-super-120b-a12b:free" data-label="Nemotron 3 Super 120B (Free)">
+                <div class="model-option-indicator w-5 h-5 shrink-0 rounded-full border-2 border-gray-600 flex items-center justify-center transition-colors">
+                  <svg class="model-option-check h-3 w-3 text-white hidden" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-white">Nemotron 3 Super 120B (Free)</p>
+                  <p class="text-xs text-gray-400 mt-0.5">開放測試版，回應可能較不穩定</p>
+                </div>
+                <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-600/60 text-gray-400">僅文字</span>
+              </button>
             </div>
           </div>
+        </div>
+        <!-- Hidden select for JS compatibility -->
+        <select class="model-select hidden" data-current-model="minimax-m2.5-routed">
+          <option value="bedrock/minimax.minimax-m2.5">minimax-m2.5 (Bedrock)</option>
+          <option value="bedrock/nvidia.nemotron-super-3-120b">nemotron-super-3-120b (Bedrock)</option>
+          <option value="anthropic/claude-opus-4.6">claude-opus-4.6 (支援圖片)</option>
+          <option value="anthropic/claude-sonnet-4.6">claude-sonnet-4.6 (支援圖片)</option>
+          <option value="anthropic/claude-haiku-4.5">claude-haiku-4.5 (支援圖片)</option>
+          <option value="moonshotai/kimi-k2.5">kimi-k2.5 (支援圖片)</option>
+          <option value="minimax/minimax-m2.5">minimax-m2.5 (OpenRouter)</option>
+          <option value="nvidia/nemotron-3-super-120b-a12b:free">nemotron-3-super-120b-a12b:free</option>
+          <option value="minimax-m2.5-routed" selected="">minimax-m2.5-routed</option>
+        </select>
+      </div>
+      <script>
+      (function() {
+        var card = document.querySelector('[data-gateway-id="g-3aff885078c1ed07"]');
+        if (!card) return;
+        var wrap = card.querySelector('.model-custom-picker');
+        if (!wrap) return;
+        var trigger = wrap.querySelector('.model-picker-trigger');
+        var panel = wrap.querySelector('.model-picker-panel');
+        var chevron = wrap.querySelector('.model-picker-chevron');
+        var label = wrap.querySelector('.model-picker-label');
+        var options = wrap.querySelectorAll('.model-option');
+        var modelWrap = card.querySelector('.model-wrap');
+        var select = modelWrap ? modelWrap.querySelector('.model-select') : null;
 
-          <!-- [改善 2] 下拉選單兩個選項都有說明 -->
-          <div class="split-btn-wrap">
-            <button class="split-btn-main" onclick="startDeploy()">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              新增專屬主機
-            </button>
-            <button class="split-btn-chevron" onclick="toggleDropdown(event,'split-dd-empty')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </button>
-            <div class="split-dropdown" id="split-dd-empty">
-              <div class="split-option" onclick="startDeploy()">
-                <svg class="split-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="split-option-body">
-                  <div class="split-option-name">專屬</div>
-                  <div class="split-option-desc">常駐運行、專屬資源，效能與穩定性最高</div>
-                </div>
-              </div>
-              <div class="split-option" onclick="startDeploy()">
-                <div class="split-option-spacer"></div>
-                <div class="split-option-body">
-                  <div class="split-option-name">標準 <span class="free-badge">免費</span></div>
-                  <div class="split-option-desc">按需啟動、共享資源，適合輕量或初期試用</div>
-                </div>
-              </div>
-            </div>
+        var VALUE_MAP = {
+          'minimax-m2.5-routed': 'MiniMax M2.5 (Routed)',
+          'bedrock/minimax.minimax-m2.5': 'MiniMax M2.5 (Bedrock)',
+          'bedrock/nvidia.nemotron-super-3-120b': 'Nemotron Super 3 120B',
+          'anthropic/claude-opus-4.6': 'Claude Opus 4.6',
+          'anthropic/claude-sonnet-4.6': 'Claude Sonnet 4.6',
+          'anthropic/claude-haiku-4.5': 'Claude Haiku 4.5',
+          'moonshotai/kimi-k2.5': 'Kimi K2.5',
+          'minimax/minimax-m2.5': 'MiniMax M2.5 (OpenRouter)',
+          'nvidia/nemotron-3-super-120b-a12b:free': 'Nemotron 3 Super 120B (Free)'
+        };
+
+        function setSelected(value) {
+          if (label) label.textContent = VALUE_MAP[value] || value;
+          options.forEach(function(opt) {
+            var ind = opt.querySelector('.model-option-indicator');
+            var check = opt.querySelector('.model-option-check');
+            var isSelected = opt.getAttribute('data-value') === value;
+            if (isSelected) {
+              opt.classList.add('bg-gray-800/60');
+              opt.style.outline = '1.5px solid rgba(99,130,255,0.5)';
+              if (ind) { ind.classList.remove('border-gray-600'); ind.classList.add('border-blue-500', 'bg-blue-600'); }
+              if (check) check.classList.remove('hidden');
+            } else {
+              opt.classList.remove('bg-gray-800/60');
+              opt.style.outline = '';
+              if (ind) { ind.classList.add('border-gray-600'); ind.classList.remove('border-blue-500', 'bg-blue-600'); }
+              if (check) check.classList.add('hidden');
+            }
+          });
+        }
+
+        var current = select ? (select.getAttribute('data-current-model') || select.value) : 'minimax-m2.5-routed';
+        setSelected(current);
+
+        function openPanel() { panel.classList.remove('hidden'); chevron.style.transform = 'rotate(180deg)'; }
+        function closePanel() { panel.classList.add('hidden'); chevron.style.transform = ''; }
+
+        trigger.addEventListener('click', function(e) {
+          e.stopPropagation();
+          panel.classList.contains('hidden') ? openPanel() : closePanel();
+        });
+
+        options.forEach(function(opt) {
+          opt.addEventListener('click', function() {
+            var val = opt.getAttribute('data-value');
+            setSelected(val);
+            if (select) {
+              select.value = val;
+              select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            closePanel();
+          });
+        });
+
+        document.addEventListener('click', function() { closePanel(); });
+        panel.addEventListener('click', function(e) { e.stopPropagation(); });
+      })();
+      </script>
+
+      <!-- per-instance language picker (commit ec63f8b) is intentionally
+           hidden: two language controls (deploy-time UI locale + this
+           per-channel override) confused users without obvious value.
+           DOM + bind handlers stay in place so it can be re-enabled by
+           removing the hidden class. -->
+      <div class="language-wrap hidden mt-3" data-current-language="">
+        <div class="flex items-center gap-2 min-h-[34px]">
+          <label class="text-sm font-medium text-gray-400 shrink-0">機器語言</label>
+          <select class="language-select appearance-none rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 pr-7 text-sm text-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 max-w-xs" style="background-image:url(" data:image="" svg+xml,%3csvg="" xmlns="http://www.w3.org/2000/svg" fill="none" viewbox="0 0 24 24" stroke-width="2" stroke="%239ca3af" %3e%3cpath="" stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" %3e%3c="" svg%3e");background-repeat:no-repeat;background-position:right="" 0.375rem="" center;background-size:1rem="" 1rem;"="">
+            <option value="zh-TW">中文（繁體）</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+          </select>
+          <button type="button" class="language-save-btn hidden rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">套用</button>
+          <div class="language-status-wrap hidden flex items-center gap-2">
+            <div class="language-spinner h-4 w-4 shrink-0 rounded-full border-2 border-gray-600 border-t-brand-500 animate-spin"></div>
+            <span class="language-status-text text-sm text-gray-400"></span>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- ═══ Dashboard ═══ -->
-    <div id="view-dashboard">
-      <div class="inner">
+      <!-- Channels section -->
+      <div class="mt-6 border-t border-gray-700 pt-6">
+        <h3 class="text-base font-semibold text-white mb-4">連結頻道</h3>
+        <div class="flex flex-col gap-4">
 
-        <div class="page-title-row">
-          <span class="page-title">OpenClaw 實例</span>
-          <span class="page-subtitle">1 個就緒、0 個部署中</span>
+    <!-- MB AI Chat integration card (staging only) -->
+    <div class="mbai-card order-1 rounded-xl border border-gray-700 bg-gray-800 p-5 ">
+      <div class="flex items-center gap-3">
+        <img src="/MBAI-clear.png" alt="" class="h-6 w-6 shrink-0">
+        <h4 class="text-base font-semibold text-white">MixerBox AI Chat</h4>
+        <span class="mbai-badge  ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-600/15 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+          <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+          已連接
+        </span>
+        <span class="mbai-pending hidden ml-auto inline-flex items-center gap-1 rounded-full bg-yellow-600/15 px-2.5 py-0.5 text-xs font-medium text-yellow-400">
+          <div class="h-3 w-3 rounded-full border-2 border-yellow-600 border-t-yellow-400 animate-spin"></div>
+          正在建立機器人帳號...
+        </span>
+        <span class="mbai-installing hidden ml-auto inline-flex items-center gap-1 rounded-full bg-blue-600/15 px-2.5 py-0.5 text-xs font-medium text-blue-400">
+          <div class="h-3 w-3 rounded-full border-2 border-blue-600 border-t-blue-400 animate-spin"></div>
+          正在安裝外掛程式...
+        </span>
+        <span class="mbai-verifying hidden ml-auto inline-flex items-center gap-1 rounded-full bg-blue-600/15 px-2.5 py-0.5 text-xs font-medium text-blue-400" title="Plugin paired but not yet verified loaded in the sandbox.">
+          <div class="h-3 w-3 rounded-full border-2 border-blue-600 border-t-blue-400 animate-spin"></div>
+          正在驗證...
+        </span>
+        <span class="mbai-error hidden ml-auto inline-flex items-center gap-1 rounded-full bg-red-600/15 px-2.5 py-0.5 text-xs font-medium text-red-400">
+          失敗
+        </span>
+      </div>
+      <p class="text-sm text-gray-400 mt-2">透過 MixerBox AI App 與此 AI 助手聊天</p>
+      <div class="mt-3">
+        <button type="button" class="mbai-pair-btn hidden rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+          整合 MB AI
+        </button>
+        <p class="mbai-pair-error mt-2 text-sm text-red-400 hidden"></p>
+      </div>
+      <!-- Bot profile (shown when paired) -->
+      <div class="mbai-details  mt-4 space-y-3">
+        <div class="mbai-bot-name-row flex items-center gap-3">
+          <div class="mbai-avatar-wrap relative shrink-0 w-8 h-8 cursor-pointer group" title="更換頭像">
+            <img class="mbai-bot-avatar-img h-8 w-8 rounded-full object-cover bg-gray-700" src="https://zenclaw-public-assets.s3.us-east-1.amazonaws.com/prod/avatars/zenclaw-default-avatar.png" alt="Bot avatar" onerror="this.src='';this.classList.add('hidden')">
+            <div class="mbai-avatar-placeholder hidden h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center">
+              <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0"></path></svg>
+            </div>
+            <div class="mbai-avatar-hover absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <svg class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"></path></svg>
+            </div>
+            <div class="mbai-avatar-spinner hidden absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+              <div class="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+            </div>
+            <input type="file" class="mbai-avatar-file-input absolute inset-0 opacity-0 cursor-pointer" accept="image/png,image/jpeg,image/webp,image/gif">
+          </div>
+          <span class="mbai-bot-name-display text-sm font-medium text-white">ZenClaw AI</span>
+          <button type="button" class="mbai-edit-name-btn shrink-0 rounded p-1 text-gray-400 transition-colors hover:text-gray-200 hover:bg-gray-700/60" title="編輯">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"></path></svg>
+          </button>
         </div>
-
-        <!-- Instance card -->
-        <div class="instance-card">
-
-          <!-- Deploying -->
-          <div class="deploy-state" id="deploy-state">
-            <div class="deploy-spinner-row">
-              <div class="spinner"></div>
-              <span class="deploy-label">正在幫你準備 AI 助理…</span>
-            </div>
-            <div class="deploy-progress-track">
-              <div class="deploy-progress-fill" id="deploy-fill"></div>
-            </div>
-            <div class="deploy-pct" id="deploy-pct">0%</div>
-          </div>
-
-          <!-- Success -->
-          <div class="success-state" id="success-state">
-            <div class="check-circle">
-              <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            <div class="success-heading">完成。</div>
-            <div class="success-sub">2 秒上線</div>
-            <div class="success-desc">通常需要數小時的設定，你剛跳過了全部。</div>
-            <button class="success-cta" onclick="showDetail()">給我看 →</button>
-          </div>
-
-          <!-- Detail -->
-          <div class="detail-state" id="detail-state">
-
-            <!-- [改善 5] 資訊區：分行顯示 -->
-            <div class="instance-header">
-              <div class="instance-status-row">
-                <span class="status-badge">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  你的安裝已就緒
-                </span>
-                <span class="tier-badge">專屬</span>
-              </div>
-              <div class="info-grid">
-                <div class="info-row">
-                  <span class="info-label">Bot 網域</span>
-                  <span class="info-value">
-                    g-3aff885078c1ed07.zenclaw.bot
-                    <button class="copy-btn" title="複製" onclick="copyFeedback(this)">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    </button>
-                  </span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">代理人信箱</span>
-                  <span class="info-value">
-                    zenclaw-mpanjhnl-bu3@clawmail.me
-                    <button class="copy-btn" title="複製" onclick="copyFeedback(this)">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    </button>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <hr class="instance-divider"/>
-
-            <!-- [改善 3] 按鈕文字改為更直白的說明 + tooltip -->
-            <div class="instance-actions-top">
-              <div class="tooltip-wrap">
-                <button class="control-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                    <polyline points="15 3 21 3 21 9"/>
-                    <line x1="10" y1="14" x2="21" y2="3"/>
-                  </svg>
-                  開啟 AI 助理後台
-                </button>
-                <div class="tooltip">管理知識庫、提示詞與進階設定<br/>（由 ControlUI 驅動）</div>
-              </div>
-            </div>
-
-            <hr class="instance-divider"/>
-
-            <!-- [改善 6] 模型：刷新圖示有 tooltip + 顯示模型別名 -->
-            <div class="model-row">
-              <span class="model-label">模型</span>
-              <div class="tooltip-wrap">
-                <button class="model-refresh-btn">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="23 4 23 10 17 10"/>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                  </svg>
-                </button>
-                <div class="tooltip">重新載入可用模型列表</div>
-              </div>
-              <div class="model-selector">
-                <span class="model-name">minimax-m2.5-routed</span>
-                <span class="model-alias">&nbsp;· 快速回應</span>
-                <svg class="model-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </div>
-              <span class="litellm-badge">LiteLLM</span>
-            </div>
-
-            <hr class="instance-divider"/>
-
-            <!-- Channels -->
-            <div class="channels-section">
-              <div class="channels-heading">連結頻道</div>
-
-              <!-- MixerBox AI Chat (已連接，預設展開) -->
-              <div class="channel-card expanded">
-                <div class="channel-header" onclick="toggleChannel(this.parentElement)">
-                  <div class="channel-icon" style="background:linear-gradient(135deg,#1a3a6b,#0f2744)">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  </div>
-                  <div class="channel-meta">
-                    <div class="channel-name">MixerBox AI Chat</div>
-                    <div class="channel-desc-short">透過 MixerBox AI App 與此 AI 助手聊天</div>
-                  </div>
-                  <span class="connected-badge">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    已連接
-                  </span>
-                  <svg class="channel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </div>
-                <div class="channel-body">
-                  <div class="bot-name-row">
-                    <div class="bot-avatar">Z</div>
-                    <span class="bot-name">ZenClaw AI</span>
-                    <button class="edit-icon-btn" title="編輯名稱">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                  </div>
-                  <button class="open-chat-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                    開啟聊天
-                  </button>
-                  <div class="plugin-row">
-                    <span class="plugin-version">Plugin &nbsp; v2026.4.13</span>
-                    <span class="latest-badge">最新</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- LINE -->
-              <div class="channel-card">
-                <div class="channel-header" onclick="toggleChannel(this.parentElement)">
-                  <div class="channel-icon" style="background:#06c755">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.02 2 11c0 3.15 1.63 5.94 4.14 7.72.18.12.29.32.29.54v2.13c0 .39.43.62.76.41L9.5 20.3a1 1 0 0 1 .55-.09c.64.08 1.29.13 1.95.13 5.52 0 10-4.02 10-9S17.52 2 12 2z"/></svg>
-                  </div>
-                  <div class="channel-meta">
-                    <div class="channel-name">LINE</div>
-                    <div class="channel-desc-short">透過 LINE 與你的 AI 助理聊天。</div>
-                  </div>
-                  <svg class="channel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </div>
-                <div class="channel-body">
-                  <div class="pairing-body">
-                    <div class="pairing-title">配對你的 LINE 帳號</div>
-                    <div class="pairing-notice">注意：一個 LINE 帳號只能綁定一台 instance，若要配對其他 instance，請先解除目前綁定。</div>
-                    <ol class="pairing-steps">
-                      <li>點擊下方的「產生配對碼」取得一組配對碼</li>
-                      <li>在 LINE 加入 <a href="#">@zenclawai</a> 為好友</li>
-                      <li>將配對碼傳給機器人，配對會自動完成</li>
-                    </ol>
-                    <button class="pairing-btn">產生配對碼</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Telegram -->
-              <div class="channel-card">
-                <div class="channel-header" onclick="toggleChannel(this.parentElement)">
-                  <div class="channel-icon" style="background:#2CA5E0">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
-                  </div>
-                  <div class="channel-meta">
-                    <div class="channel-name">Telegram</div>
-                    <div class="channel-desc-short">透過 Telegram 與你的 AI 助理聊天。</div>
-                  </div>
-                  <svg class="channel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </div>
-                <div class="channel-body">
-                  <div class="pairing-body">
-                    <div class="pairing-title">連接 Telegram Bot</div>
-                    <ol class="pairing-steps">
-                      <li>前往 Telegram，搜尋 <a href="#">@BotFather</a></li>
-                      <li>建立新 Bot 並取得 API Token</li>
-                      <li>將 Token 填入下方欄位完成連接</li>
-                    </ol>
-                    <button class="pairing-btn">輸入 Bot Token</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Microsoft Teams -->
-              <div class="channel-card">
-                <div class="channel-header" onclick="toggleChannel(this.parentElement)">
-                  <div class="channel-icon" style="background:#5059C9">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M20 3H7a2 2 0 0 0-2 2v2H3a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2v2a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></svg>
-                  </div>
-                  <div class="channel-meta">
-                    <div class="channel-name">Microsoft Teams</div>
-                    <div class="channel-desc-short">透過 Microsoft Teams 與你的 AI 助手對話。</div>
-                  </div>
-                  <svg class="channel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </div>
-                <div class="channel-body">
-                  <div class="pairing-body">
-                    <div class="pairing-title">連接 Microsoft Teams</div>
-                    <ol class="pairing-steps">
-                      <li>在 Azure 入口網站建立 Bot 應用程式</li>
-                      <li>設定 Messaging Endpoint 為你的 ZenClaw 網址</li>
-                      <li>將 App ID 與 Secret 填入下方欄位</li>
-                    </ol>
-                    <button class="pairing-btn">開始設定</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- [改善 7+11] 標籤說明 + 危險操作分離 -->
-            <div class="instance-footer">
-              <div class="tags-section">
-                <div class="tags-label">標籤（用於識別或分組此實例）</div>
-                <div class="tags-add">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  新增標籤…
-                </div>
-              </div>
-
-              <div class="instance-actions-bottom">
-                <button class="action-btn">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                  編輯網路政策
-                </button>
-                <button class="action-btn">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                  修復並重啟
-                </button>
-                <div class="action-btn-spacer"></div>
-                <button class="delete-btn">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                  刪除安裝
-                </button>
-              </div>
-            </div>
-
-          </div><!-- /detail-state -->
-        </div><!-- /instance-card -->
-
-        <!-- Add more instances -->
-        <div class="add-instance-row">
-          <div class="add-split-wrap">
-            <button class="add-split-main">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              新增專屬主機
-            </button>
-            <button class="add-split-chevron" onclick="toggleDropdown(event,'split-dd-add')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="split-dropdown" id="split-dd-add">
-              <div class="split-option">
-                <svg class="split-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="split-option-body">
-                  <div class="split-option-name">專屬</div>
-                  <div class="split-option-desc">常駐運行、專屬資源，效能與穩定性最高</div>
-                </div>
-              </div>
-              <div class="split-option">
-                <div class="split-option-spacer"></div>
-                <div class="split-option-body">
-                  <div class="split-option-name">標準 <span class="free-badge">免費</span></div>
-                  <div class="split-option-desc">按需啟動、共享資源，適合輕量或初期試用</div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="mbai-bot-name-edit hidden flex items-center gap-2">
+          <input type="text" class="mbai-bot-name-input min-w-0 flex-1 rounded border border-gray-600 bg-gray-900 px-2.5 py-1.5 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" maxlength="30" placeholder="ZenClaw AI" value="ZenClaw AI">
+          <button type="button" class="mbai-save-name-btn rounded border border-blue-500 px-3 py-1.5 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed">儲存</button>
+          <button type="button" class="mbai-cancel-name-btn rounded border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:text-gray-300">取消</button>
         </div>
-
+      </div>
+      <!-- Open Chat button: visible while chatbot is in-flight or ready.
+           Click handler intercepts when not yet ready, shows loading, and
+           polls until plugin is verified loaded (or times out). -->
+      <a href="https://static.mixerbox.com/AI/open_chat.html?link=mixerboxai%3A%2F%2Fchat%2F7340d07c-7aae-441c-8558-1189101a07cc&amp;name=%E6%88%91%E7%9A%84%E8%81%8A%E5%A4%A9%E5%AE%A4&amp;icon=https%3A%2F%2Fzenclaw-public-assets.s3.us-east-1.amazonaws.com%2FMBAI.png" target="_blank" rel="noopener noreferrer" class="mbai-deeplink  mt-3 inline-flex items-center justify-center gap-2 rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/20 hover:text-blue-200" data-ready="1" data-deeplink="https://static.mixerbox.com/AI/open_chat.html?link=mixerboxai%3A%2F%2Fchat%2F7340d07c-7aae-441c-8558-1189101a07cc&amp;name=%E6%88%91%E7%9A%84%E8%81%8A%E5%A4%A9%E5%AE%A4&amp;icon=https%3A%2F%2Fzenclaw-public-assets.s3.us-east-1.amazonaws.com%2FMBAI.png">
+        <svg class="mbai-deeplink-icon h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"></path></svg>
+        <span class="mbai-deeplink-spinner hidden h-4 w-4 rounded-full border-2 border-blue-300/30 border-t-blue-300 animate-spin"></span>
+        <span class="mbai-deeplink-label">開啟聊天</span>
+      </a>
+      <!-- Plugin version row (staging-only via card's outer i18n.isStaging gate) -->
+      <div class="mbai-plugin-version  mt-3 pt-3 border-t border-gray-700/50">
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-400">Plugin</span>
+          <span class="mbai-plugin-version-text text-xs font-mono text-gray-300">v2026.4.13</span>
+          <span class="mbai-plugin-version-badge ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-emerald-600/15 text-emerald-400">最新</span>
+        </div>
+        <div class="mbai-plugin-update-row mt-2 hidden">
+          <button type="button" class="mbai-update-btn rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"></button>
+          <p class="mt-1.5 text-[11px] text-gray-500">需時約 1 分鐘，機器人將短暫離線。</p>
+        </div>
+        <p class="mbai-update-error mt-2 hidden text-xs text-red-400"></p>
       </div>
     </div>
 
-  </main>
+        <div class="tg-card order-3 rounded-xl border border-gray-700 bg-gray-800 p-5 cursor-pointer hover:border-gray-600 transition-colors">
+          <div class="flex items-center gap-3">
+            <svg class="h-6 w-6 text-sky-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"></path>
+            </svg>
+            <h4 class="text-base font-semibold text-white">Telegram</h4>
+            <span class="tg-badge hidden ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-600/15 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+              已連結
+            </span>
+            <button type="button" class="tg-disconnect-btn hidden p-1 text-gray-500 hover:text-red-400 transition-colors" title="Disconnect">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path></svg>
+            </button>
+            <button type="button" class="tg-toggle  ml-auto p-1 text-gray-400 hover:text-white transition-colors" aria-expanded="false">
+              <svg class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"></path></svg>
+            </button>
+          </div>
+          <p class="text-sm text-gray-400 mt-2">透過 Telegram 與你的 AI 助理聊天。</p>
 
-  <footer>
-    zenclaw.ai 由 <a href="#">MixerBox Inc.</a> 擁有和營運，MixerBox 是 Y Combinator 公司。<br/>
-    © 2026 MixerBox Inc. 保留所有權利。
-  </footer>
+          <!-- Collapsible setup area -->
+          <div class="tg-details hidden mt-4">
 
-  <script>
-    /* ── 所有下拉選單統一管理 ── */
-    document.addEventListener('click', () => {
-      document.querySelectorAll('.split-dropdown, .account-dropdown, .lang-dropdown').forEach(d => d.classList.remove('open'));
-    });
+          <!-- Setup form -->
+          <div class="tg-form-wrap ">
+            <ol class="text-sm text-gray-300 list-decimal list-inside space-y-1.5 mb-4">
+              <li><a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline hover:no-underline">在 Telegram 上開啟 @BotFather</a></li>
+              <li>發送 /newbot，按照提示操作並複製 token</li>
+              <li>在下方貼上你的 bot token</li>
+            </ol>
+            <p class="tg-hint mb-3 text-sm text-gray-300">💡 提示：你可以直接貼上整段 BotFather 訊息，我們會自動提取 token</p>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <input type="text" class="tg-token-input flex-1 rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500" placeholder="123456:ABC-DEF...">
+              <button type="button" class="tg-submit-btn w-full sm:w-auto rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed">連結</button>
+            </div>
+            <p class="tg-error mt-2 text-sm text-red-400 hidden"></p>
+            <p class="tg-configuring-hint mt-2 text-xs text-gray-400 hidden">大約需要 1 至 3 分鐘，看到右上角「已連結」徽章才算完成；Bot 準備好後請依下方步驟完成配對。</p>
+          </div>
 
-    function toggleDropdown(e, id) {
-      e.stopPropagation();
-      const dd = document.getElementById(id);
-      const wasOpen = dd.classList.contains('open');
-      document.querySelectorAll('.split-dropdown, .account-dropdown, .lang-dropdown').forEach(d => d.classList.remove('open'));
-      if (!wasOpen) dd.classList.add('open');
+          <!-- Success state -->
+          <div class="tg-success hidden mt-3">
+            <p class="text-sm text-emerald-400 font-medium">Bot 已就位 — 還剩一步：配對你的 Telegram 帳號</p>
+
+            <!-- Pairing -->
+            <div class="mt-4 rounded-lg border border-gray-600 bg-gray-700/50 p-4">
+              <h5 class="text-sm font-semibold text-white mb-2">配對你的 Telegram 帳號</h5>
+
+              
+              <!-- STAGING-ONLY: Shared @ZenClawPairBot QR flow (Option B').
+                   Hidden by default — revealed via the "Try new QR
+                   pairing (beta)" toggle under the legacy form. Legacy
+                   stays the default entry point for everyone so the
+                   happy path is identical to production. -->
+              <div class="pair-qr-wrap hidden mb-4 rounded-lg border border-sky-700/60 bg-sky-950/30 p-4">
+                <div class="flex flex-col items-center gap-3">
+                  <!-- Primary action: "Open in Telegram on this device".
+                       Works for both mobile (deep-links into the Telegram
+                       app) and desktop (opens Telegram Desktop / web via
+                       t.me). QR is demoted to a secondary path for the
+                       cross-device case (dashboard on desktop, Telegram
+                       only on phone). -->
+                  <a class="pair-qr-link inline-flex items-center justify-center gap-2 w-full rounded-lg bg-sky-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-400" href="#" target="_blank" rel="noopener noreferrer">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"></path></svg>
+                    在這台裝置開啟 Telegram
+                  </a>
+                  <!-- "or scan on another device" separator -->
+                  <div class="flex items-center gap-3 w-full">
+                    <div class="h-px flex-1 bg-gray-700"></div>
+                    <span class="text-xs text-gray-500">用手機掃描</span>
+                    <div class="h-px flex-1 bg-gray-700"></div>
+                  </div>
+                  <img class="pair-qr-img rounded-lg bg-white p-2" width="200" height="200" alt="Pairing QR code">
+                  <p class="pair-qr-subtitle text-xs text-gray-400 text-center max-w-xs">開啟 Telegram、按 START，即會自動完成綁定。</p>
+                  <div class="pair-qr-waiting flex items-center gap-2 text-sm text-gray-400 mt-1">
+                    <svg class="h-4 w-4 animate-spin shrink-0 text-sky-400" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                    <span>等待你在 Telegram 完成配對⋯⋯</span>
+                  </div>
+                  <button type="button" class="pair-qr-fallback-toggle text-xs text-gray-500 hover:text-gray-300 underline">無法掃描？請改用下方手動配對碼。</button>
+                </div>
+              </div>
+              
+
+              <!-- Legacy copy-paste flow — the default entry point in both
+                   environments. In staging the opt-in toggle below can
+                   swap it out for the new QR block. -->
+              <div class="pair-legacy-wrap">
+                <ol class="text-sm text-gray-300 list-decimal list-inside space-y-1.5 mb-4">
+                  <li><a class="pairing-bot-link text-sky-400 underline hover:no-underline" href="#" target="_blank" rel="noopener noreferrer">在 Telegram 上開啟你的 bot，發送任意訊息</a></li>
+                  <li>Bot 會回覆一組 8 位配對碼</li>
+                  <li>在下方輸入配對碼</li>
+                </ol>
+                <p class="pairing-hint mb-3 text-sm text-gray-300">💡 提示：你可以直接貼上整段 Bot 訊息，我們會自動提取配對碼</p>
+                <div class="pairing-form-wrap">
+                  <div class="flex flex-col gap-2 sm:flex-row">
+                    <input type="text" class="pairing-code-input flex-1 rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white uppercase tracking-widest font-mono placeholder-gray-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500" placeholder="例如 AB2CD3EF">
+                    <button type="button" class="pairing-submit-btn w-full sm:w-auto rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed">確認配對</button>
+                  </div>
+                  <p class="pairing-error mt-2 text-sm text-red-400 hidden"></p>
+                </div>
+              </div>
+              <div class="pairing-success hidden">
+                <p class="text-sm text-emerald-400 font-medium">配對成功！你現在可以跟 Bot 聊天了。</p>
+                
+                <!-- STAGING-ONLY opt-in toggle for the new QR flow. Parked
+                     under the success message for now — the flow itself is
+                     paused while we finalise the allowlist-based approach.
+                     The default "hidden" class keeps it invisible; removing
+                     that class reactivates the entry point without moving
+                     HTML around. -->
+                <button type="button" class="pair-try-qr-toggle hidden mt-3 text-xs text-sky-400 hover:text-sky-300 underline">✨ 試試新的 QR 配對（beta）</button>
+                
+              </div>
+            </div>
+          </div>
+          </div><!-- /tg-details -->
+        </div>
+
+    <!-- MS Teams channel card -->
+    <div class="ms-card order-4 rounded-xl border border-gray-700 bg-gray-800 p-5 cursor-pointer hover:border-gray-600 transition-colors">
+      <div class="flex items-center gap-3">
+        <img src="/teams.png" alt="" class="h-6 w-6 shrink-0">
+        <h4 class="text-base font-semibold text-white">Microsoft Teams</h4>
+        <span class="ms-badge hidden ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-600/15 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+          已連接
+        </span>
+        <button type="button" class="ms-disconnect-btn hidden p-1 text-gray-500 hover:text-red-400 transition-colors" title="Disconnect">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path></svg>
+        </button>
+        <button type="button" class="ms-toggle  ml-auto p-1 text-gray-400 hover:text-white transition-colors" aria-expanded="false">
+          <svg class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"></path></svg>
+        </button>
+      </div>
+      <div class="flex items-center justify-between mt-2">
+        <p class="text-sm text-gray-400">透過 Microsoft Teams 與你的 AI 助手對話。</p>
+        <button type="button" class="ms-copy-connected-btn hidden shrink-0 rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:border-violet-500 hover:text-violet-400" data-url="https://g-3aff885078c1ed07.zenclaw.bot/api/messages">複製 Webhook URL</button>
+      </div>
+
+      <!-- Collapsible setup area -->
+      <div class="ms-details hidden mt-4">
+
+      <!-- Setup form (hidden when configured) -->
+      <div class="ms-form-wrap ">
+        <!-- Webhook URL shown upfront so user can set it in Azure in one trip -->
+        <div class="rounded-lg border border-gray-600 bg-gray-700/50 p-4 mb-4">
+          <h5 class="text-sm font-semibold text-white mb-2">訊息端點網址</h5>
+          <div class="flex items-center gap-2">
+            <code class="ms-webhook-url flex-1 rounded bg-gray-900 px-3 py-2 text-xs text-emerald-400 font-mono break-all">https://g-3aff885078c1ed07.zenclaw.bot/api/messages</code>
+            <button type="button" class="ms-copy-btn shrink-0 rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-xs text-gray-300 hover:bg-gray-600 transition-colors">Copy</button>
+          </div>
+        </div>
+        <ol class="text-sm text-gray-300 list-decimal list-inside space-y-1.5 mb-4">
+          <li>複製上方的<strong>訊息端點網址</strong></li>
+          <li>到 <a href="https://portal.azure.com/#create/Microsoft.AzureBot" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline hover:no-underline">Azure Portal</a> 建立 Azure Bot（選 Single Tenant）</li>
+          <li>把網址貼到 Bot → Configuration → <strong>Messaging endpoint</strong></li>
+          <li>複製 <strong>App ID</strong>，建立 <strong>Client Secret</strong>，再複製 <strong>Tenant ID</strong></li>
+          <li>回來填入以下欄位，按下連線</li>
+        </ol>
+        <div class="flex flex-col gap-2">
+          <input type="text" class="ms-app-id-input rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500" placeholder="App ID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          <input type="password" class="ms-app-password-input rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500" placeholder="App Password: 用戶端密碼值">
+          <input type="text" class="ms-tenant-id-input rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500" placeholder="Tenant ID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          <button type="button" class="ms-submit-btn w-full sm:w-auto rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-400 disabled:opacity-50 disabled:cursor-not-allowed">
+            連接
+          </button>
+        </div>
+        <p class="ms-error mt-2 text-sm text-red-400 hidden"></p>
+      </div>
+
+      <!-- Configuring state: shown while polling after submit -->
+      <div class="ms-configuring hidden mt-3">
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 animate-spin shrink-0 text-violet-400" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          <span class="ms-configuring-msg text-sm text-gray-400">正在設定 MS Teams...</span>
+        </div>
+        <p class="ms-timeout-error mt-2 text-sm text-red-400 hidden"></p>
+        <button type="button" class="ms-retry-btn hidden mt-2 rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:border-violet-500 hover:text-violet-400 disabled:opacity-50">重試</button>
+      </div>
+
+      </div><!-- /ms-details -->
+
+      <p class="ms-disconnect-error mt-2 text-sm text-red-400 hidden"></p>
+    </div>
+
+    <!-- LINE channel card -->
+    <div class="line-card order-2 rounded-xl border border-gray-700 bg-gray-800 p-5 cursor-pointer hover:border-gray-600 transition-colors">
+      <div class="flex items-center gap-3">
+        <svg class="h-6 w-6 text-green-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.515.254l2.449 3.32V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"></path>
+        </svg>
+        <h4 class="text-base font-semibold text-white">LINE</h4>
+        <span class="line-badge hidden ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-600/15 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+          <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg>
+          已連結
+        </span>
+        <button type="button" class="line-toggle  ml-auto p-1 text-gray-400 hover:text-white transition-colors" aria-expanded="false">
+          <svg class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"></path></svg>
+        </button>
+      </div>
+      <p class="text-sm text-gray-400 mt-2">透過 LINE 與你的 AI 助理聊天。</p>
+
+      <!-- Collapsible setup area (auto-expanded when already configured so the
+           unpair button is reachable — toggle is hidden in that state). -->
+      <div class="line-details hidden mt-4">
+
+      <!-- Reverse pairing: dashboard generates a 6-char code, user pastes into LINE -->
+      <div class="line-pairing-wrap ">
+        <div class="rounded-lg border border-gray-600 bg-gray-700/50 p-4">
+          <h5 class="text-sm font-semibold text-white mb-2">配對你的 LINE 帳號</h5>
+          <p class="mb-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">注意：一個 LINE 帳號只能綁定一台 instance。若要配對其他 instance，請先解除目前綁定。</p>
+
+          <!-- Locked state: another instance is already paired with this user's LINE. -->
+          <div class="line-pairing-locked hidden">
+            <p class="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">你的 LINE 帳號已經綁定其他 instance，請先到該 instance 解除綁定，再回來這裡產生新的配對碼。</p>
+          </div>
+
+          <div class="line-pairing-unlocked ">
+            <ol class="text-sm text-gray-300 list-decimal list-inside space-y-1.5 mb-4">
+              <li>點擊下方的「產生配對碼」取得一組配對碼</li>
+              <li><a class="line-bot-link text-green-400 underline hover:no-underline" href="https://line.me/R/ti/p/@480squtk" target="_blank" rel="noopener noreferrer">在 LINE 加入 @zenclawai 為好友</a></li>
+              <li>將配對碼傳給機器人，配對會自動完成</li>
+            </ol>
+
+            <!-- State A: no code yet — show Generate button -->
+            <div class="line-code-initial">
+              <button type="button" class="line-generate-btn w-full sm:w-auto rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed">產生配對碼</button>
+              <p class="line-pairing-error mt-2 text-sm text-red-400 hidden"></p>
+            </div>
+
+            <!-- State B: code is active — show code + copy + countdown -->
+            <div class="line-code-display hidden">
+              <div class="flex items-center gap-2 rounded-lg border border-green-500/40 bg-gray-800 px-4 py-3">
+                <code class="line-code-value flex-1 text-center text-2xl font-bold tracking-[0.3em] font-mono text-green-300">------</code>
+                <button type="button" class="line-code-copy-btn shrink-0 rounded-md border border-gray-600 bg-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-200 transition-colors hover:border-green-500 hover:text-green-300">複製</button>
+              </div>
+              <p class="line-code-countdown mt-2 text-xs text-gray-400"></p>
+              <p class="line-code-waiting mt-1 text-xs text-gray-300">請將配對碼傳給 @zenclawai 以完成配對...</p>
+              <button type="button" class="line-regenerate-btn mt-3 text-xs text-gray-400 underline hover:text-gray-200">重新產生配對碼</button>
+            </div>
+          </div><!-- /line-pairing-unlocked -->
+        </div>
+      </div>
+
+      <!-- Success state (shown when already configured) -->
+      <div class="line-success hidden mt-3">
+        <p class="text-sm text-emerald-400 font-medium">配對成功！你現在可以透過 LINE 聊天了。</p>
+        <p class="mt-2 rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200">小提示：配對完成後，你可以在 LINE 自行建立新群組（只邀請 bot），每個群組就是一個獨立的對話 session，無需重新配對。</p>
+        <button type="button" class="line-unpair-btn mt-3 rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:border-red-500 hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed">解除 LINE 綁定</button>
+        <p class="line-unpair-error mt-2 text-sm text-red-400 hidden"></p>
+      </div>
+      </div><!-- /line-details -->
+    </div>
+
+        </div><!-- /channels-flex -->
+      </div><!-- /channels-section -->
+
+      <!-- Actions: label + doctor-fix + teardown -->
+      <div class="mt-6 border-t border-gray-700 pt-6">
+        <div class="label-wrap mb-6 flex items-center gap-2">
+          <span class="label-display text-sm text-gray-500 cursor-pointer hover:text-gray-400" title="新增標籤...">新增標籤...</span>
+          <input type="text" class="label-input hidden w-full max-w-xs rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm text-white placeholder-gray-500 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500" maxlength="30" placeholder="新增標籤..." value="">
+          <span class="label-status hidden text-xs text-gray-500"></span>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="edit-policy-btn inline-flex items-center gap-1.5 rounded-lg border border-gray-600 px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-700">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            編輯網路政策
+          </button>
+          <button type="button" class="doctor-fix-btn inline-flex items-center gap-1.5 rounded-lg border border-gray-600 px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-700">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"></path>
+            </svg>
+            修復並重啟
+          </button>
+          <div class="teardown-wrap">
+            <button type="button" class="teardown-btn rounded-lg border border-red-500/30 px-4 py-2 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/10">
+              刪除安裝
+            </button>
+          </div>
+        </div>
+      </div>
+      </div><!-- /innerWrap -->
+    </div><!-- /relative -->
+    </div></div> <!-- Deploy button (shown when instances exist) --> <div id="dash-deploy-wrap" class="mt-8"> <div class="flex flex-wrap items-center gap-3"> <!-- Split-button cluster: Dedicated / Standard (staging or internal users) --> <div class="box-selector-split relative inline-flex items-stretch"> <button id="dash-deploy-btn" type="button" class="inline-flex items-center gap-2 rounded-l-lg border border-gray-700 bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"> <svg class="deploy-plus-icon h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path> </svg> <span class="deploy-spinner hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span> <span class="deploy-label">新增專屬主機</span> <span class="deploy-free-badge hidden rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">免費</span> </button> <button id="dash-deploy-caret" type="button" aria-label="Choose deployment type" class="inline-flex items-center rounded-r-lg border border-l-0 border-gray-700 bg-gray-800 px-2.5 py-2.5 text-white transition-colors hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"> <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"></path> </svg> </button> <div id="dash-deploy-menu" class="deploy-menu absolute left-0 top-full mt-2 hidden w-80 rounded-lg border border-gray-700 bg-gray-900 p-1.5 shadow-xl z-20 text-left"></div> </div> <!-- Legacy single button (non-internal prod users) --> <button id="dash-deploy-btn-legacy" type="button" class="box-selector-legacy inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hidden"> <svg class="deploy-plus-icon h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path> </svg> <span class="deploy-spinner hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span> <span class="deploy-label">新增 OpenClaw 安裝</span> </button> </div> <p id="dash-limit-msg" class="hidden mt-3 text-sm text-amber-400"></p> </div> <!-- Quota note --> <p id="dash-quota-note" class="hidden mt-8 text-sm text-gray-400">若超出使用配額，請聯繫 <a href="mailto:zenclaw-sales@mixerbox.com" class="underline hover:text-gray-200">zenclaw-sales@mixerbox.com</a> 提升配額</p> </div> </main> <!-- Generic confirm dialog now lives in BaseLayout via <ConfirmDialog />. --> <!-- Doctor Fix modal overlay --> <div id="doctor-fix-modal" class="fixed inset-0 z-50 hidden"> <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div> <div class="relative flex min-h-full items-center justify-center p-4"> <div class="w-full max-w-md rounded-2xl border border-gray-700 bg-gray-900 p-6 shadow-xl"> <!-- Confirm phase --> <div id="dfm-confirm" class="text-center"> <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-800"> <svg class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"></path> </svg> </div> <h3 id="dfm-title" class="text-lg font-semibold text-white mb-2"></h3> <p id="dfm-desc" class="text-sm text-gray-400 mb-6"></p> <div class="flex gap-3 justify-center"> <button id="dfm-cancel-btn" type="button" class="rounded-lg border border-gray-600 px-5 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-700"></button> <button id="dfm-confirm-btn" type="button" class="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-500"></button> </div> </div> <!-- Progress phase --> <div id="dfm-progress" class="hidden"> <h3 class="text-lg font-semibold text-white mb-6 text-center" id="dfm-progress-title"></h3> <div class="space-y-4"> <div id="dfm-step-1" class="flex items-center gap-3"> <div class="dfm-step-icon h-6 w-6 shrink-0 rounded-full border-2 border-gray-600 flex items-center justify-center"> <span class="dfm-spinner hidden h-4 w-4 rounded-full border-2 border-gray-600 border-t-brand-500 animate-spin"></span> <svg class="dfm-check hidden h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg> </div> <span class="dfm-step-label text-sm text-gray-400"></span> </div> <div id="dfm-step-2" class="flex items-center gap-3"> <div class="dfm-step-icon h-6 w-6 shrink-0 rounded-full border-2 border-gray-600 flex items-center justify-center"> <span class="dfm-spinner hidden h-4 w-4 rounded-full border-2 border-gray-600 border-t-brand-500 animate-spin"></span> <svg class="dfm-check hidden h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg> </div> <span class="dfm-step-label text-sm text-gray-400"></span> </div> <div id="dfm-step-3" class="flex items-center gap-3"> <div class="dfm-step-icon h-6 w-6 shrink-0 rounded-full border-2 border-gray-600 flex items-center justify-center"> <span class="dfm-spinner hidden h-4 w-4 rounded-full border-2 border-gray-600 border-t-brand-500 animate-spin"></span> <svg class="dfm-check hidden h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path></svg> </div> <span class="dfm-step-label text-sm text-gray-400"></span> </div> </div> </div> <!-- Result phase --> <div id="dfm-result" class="hidden text-center"> <div id="dfm-result-icon" class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"></div> <p id="dfm-result-text" class="text-base font-semibold mb-6"></p> <div id="dfm-result-buttons" class="flex gap-3 justify-center"></div> </div> </div> </div> </div> <!-- Pricing upgrade modal (floating overlay) --> <div id="pricing-modal" class="fixed inset-0 z-50 hidden overflow-y-auto"> <div class="fixed inset-0 bg-black/70 backdrop-blur-sm" id="pricing-modal-backdrop"></div> <div class="relative flex min-h-full items-start justify-center p-4 py-8"> <div class="w-full max-w-5xl rounded-2xl border border-gray-700 bg-gray-950 p-6 sm:p-8 shadow-xl relative"> <button id="pricing-modal-close" type="button" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10"> <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> </button> <div class="text-center mb-8"> <h2 class="text-2xl sm:text-3xl font-bold text-white">Business 方案</h2> <p class="mt-3 text-gray-400">為需要專屬基礎設施、企業級安全防護與一對一支援的團隊打造</p> </div> <div class="grid grid-cols-1 md:grid-cols-3 gap-6"> <div class="relative rounded-2xl border p-6 flex flex-col border-gray-800 bg-gray-900/50">  <h3 class="text-lg font-bold text-white">Starter</h3> <p class="mt-2 text-lg tracking-wide text-gray-400 min-h-[2rem]">輕鬆導入 AI 員工，協助處理日常工作</p> <div class="mt-5 mb-8 flex items-baseline gap-1"> <span class="text-lg font-semibold text-white">月薪 1 萬</span>  </div> <ul class="space-y-3 flex-1 mb-8"> <li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class="">  <span class="font-medium text-white">基礎 AI 使用額度</span> </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class="font-semibold text-white"> 專屬 NemoClaw 沙箱  </span> <span class="block text-xs text-gray-400 mt-1.5 leading-relaxed font-normal">客製化網路政策 · 網域白名單 · 資料完全隔離 · NVIDIA 企業級沙箱執行</span> </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 任務導向工作流 — 行銷、營運、內容持續擴充中  </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 預建工作流，針對成本效益優化  </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 多樣化 AI 模型，符合不同工作  </span>  </span> </li><li class="pl-[26px] text-xs text-gray-400 leading-relaxed !mt-1.5 flex items-start gap-2"> <span class="text-gray-500 leading-relaxed select-none">•</span> <span class="flex-1">Claude Haiku 快速完成日常任務</span> </li><li class="pl-[26px] text-xs text-gray-400 leading-relaxed !mt-1.5 flex items-start gap-2"> <span class="text-gray-500 leading-relaxed select-none">•</span> <span class="flex-1">MiniMax M2.5 · Kimi K2.5 — 成本優化，搭配工作流更省</span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> Clawmail AI 信箱管理功能  </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 最大 ZenClaw 實例數 (Instances) <span class="font-medium text-white ml-1">1 個</span> </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 工作區儲存空間 <span class="font-medium text-white ml-1">100 MB</span> </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class="">  <span class="font-medium text-white">Email 支援</span> </span>  </span> </li> </ul> <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var e=async t=>{await(await t())()};(self.Astro||(self.Astro={})).load=e;window.dispatchEvent(new Event("astro:load"));})();</script><script>(()=>{var A=Object.defineProperty;var g=(i,o,a)=>o in i?A(i,o,{enumerable:!0,configurable:!0,writable:!0,value:a}):i[o]=a;var d=(i,o,a)=>g(i,typeof o!="symbol"?o+"":o,a);{let i={0:t=>m(t),1:t=>a(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(a(t)),5:t=>new Set(a(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>1/0*t},o=t=>{let[l,e]=t;return l in i?i[l](e):void 0},a=t=>t.map(o),m=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([l,e])=>[l,o(e)]));class y extends HTMLElement{constructor(){super(...arguments);d(this,"Component");d(this,"hydrator");d(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let c=this.querySelectorAll("astro-slot"),n={},h=this.querySelectorAll("template[data-astro-template]");for(let r of h){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(let r of c){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("name")||"default"]=r.innerHTML)}let p;try{p=this.hasAttribute("props")?m(JSON.parse(this.getAttribute("props"))):{}}catch(r){let s=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(s+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${s}`,this.getAttribute("props"),r),r}let u;await this.hydrator(this)(this.Component,p,n,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});d(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),c.disconnect(),this.childrenConnectedCallback()},c=new MutationObserver(()=>{var n;((n=this.lastChild)==null?void 0:n.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});c.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}async start(){let e=JSON.parse(this.getAttribute("opts")),c=this.getAttribute("client");if(Astro[c]===void 0){window.addEventListener(`astro:${c}`,()=>this.start(),{once:!0});return}try{await Astro[c](async()=>{let n=this.getAttribute("renderer-url"),[h,{default:p}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),u=this.getAttribute("component-export")||"default";if(!u.includes("."))this.Component=h[u];else{this.Component=h;for(let f of u.split("."))this.Component=this.Component[f]}return this.hydrator=p,this.hydrate},e,this)}catch(n){console.error(`[astro-island] Error hydrating ${this.getAttribute("component-url")}`,n)}}attributeChangedCallback(){this.hydrate()}}d(y,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",y)}})();</script><astro-island uid="ZVcRNE" prefix="r3" component-url="/_astro/PricingButton.DyjwGQiU.js" component-export="default" renderer-url="/_astro/client.aV2KyXRk.js" props="{&quot;planId&quot;:[0,&quot;starter&quot;],&quot;label&quot;:[0,&quot;立即雇用&quot;],&quot;freeTrialLabel&quot;:[0,&quot;免費試用 7 天&quot;],&quot;apiUrl&quot;:[0,&quot;https://y6eto3cvn4xhkwdpku32n5op2y0rjvtb.lambda-url.us-east-1.on.aws&quot;],&quot;popular&quot;:[0],&quot;loadingText&quot;:[0,&quot;跳轉中...&quot;],&quot;redirectingText&quot;:[0,&quot;正在前往付款頁面...&quot;],&quot;upgradingText&quot;:[0,&quot;方案升級中...&quot;],&quot;currentPlanLabel&quot;:[0,&quot;目前方案&quot;],&quot;planName&quot;:[0,&quot;Starter&quot;],&quot;planPrice&quot;:[0,&quot;月薪 1 萬&quot;],&quot;planDescription&quot;:[0,&quot;輕鬆導入 AI 員工，協助處理日常工作&quot;],&quot;planFeatures&quot;:[1,[[0,&quot;專屬 NemoClaw 沙箱&quot;],[0,&quot;任務導向工作流 — 行銷、營運、內容持續擴充中&quot;],[0,&quot;預建工作流，針對成本效益優化&quot;],[0,&quot;多樣化 AI 模型，符合不同工作&quot;],[0,&quot;Clawmail AI 信箱管理功能&quot;]]],&quot;couponPlanMismatchText&quot;:[0,&quot;此優惠碼僅適用於 Starter 方案。&quot;],&quot;endTrialI18n&quot;:[0,{&quot;title&quot;:[0,&quot;結束試用並升級？&quot;],&quot;desc&quot;:[0,&quot;升級方案需要先結束目前的 7 天免費試用，且結束後無法復原。\n\n確認結束試用並前往新方案的訂閱付款頁面嗎？&quot;],&quot;ok&quot;:[0,&quot;確認，前往付款&quot;],&quot;cancel&quot;:[0,&quot;保留試用&quot;],&quot;failedTitle&quot;:[0,&quot;處理失敗&quot;],&quot;failedDesc&quot;:[0,&quot;結束試用時發生錯誤，請稍後再試或聯絡客服。&quot;],&quot;failedOk&quot;:[0,&quot;知道了&quot;]}],&quot;trialSignupI18n&quot;:[0,{&quot;title&quot;:[0,&quot;啟動免費試用&quot;],&quot;subtitle&quot;:[0,&quot;需要您填一下基本資料來啟動合作夥伴試用，不到一分鐘。&quot;],&quot;companyEmail&quot;:[0,&quot;公司 Email&quot;],&quot;companyName&quot;:[0,&quot;公司名稱&quot;],&quot;fullName&quot;:[0,&quot;姓名&quot;],&quot;jobTitle&quot;:[0,&quot;職稱&quot;],&quot;consent&quot;:[0,&quot;點擊送出即表示同意 MixerBox AI ZenClaw 服務條款與隱私權政策，並可能收到產品更新與優惠通知。&quot;],&quot;submit&quot;:[0,&quot;開始免費試用&quot;],&quot;cancel&quot;:[0,&quot;取消&quot;],&quot;submitting&quot;:[0,&quot;送出中…&quot;],&quot;errInvalidEmail&quot;:[0,&quot;請輸入有效的 Email 地址。&quot;],&quot;errMissing&quot;:[0,&quot;請填寫所有欄位。&quot;],&quot;errConsent&quot;:[0,&quot;請勾選同意條款後再送出。&quot;],&quot;errAlreadyClaimed&quot;:[0,&quot;您已使用過此優惠碼。&quot;],&quot;errGeneric&quot;:[0,&quot;發生錯誤，請稍後再試。&quot;]}]}" client="load" opts="{&quot;name&quot;:&quot;PricingButton&quot;,&quot;value&quot;:true}" await-children=""><div class="h-[44px]"></div></astro-island>  <div class="mt-3 min-h-[2rem] flex items-center justify-center">  <button id="zc-coupon-toggle" type="button" class="text-xs font-medium text-sky-400 hover:text-sky-300 transition-colors hidden"> 有優惠碼？ </button> <div id="zc-coupon-row" class="hidden items-center flex-wrap gap-2 text-xs"> <span class="text-white font-medium">優惠碼:</span> <input id="zc-coupon-input" type="text" autocomplete="off" spellcheck="false" placeholder="輸入代碼" class="rounded border border-gray-700 bg-gray-900/50 px-2 py-1 text-xs text-white placeholder-gray-600 focus:border-brand-500 focus:outline-none uppercase w-32"> <span id="zc-coupon-status" class="text-emerald-400 hidden whitespace-nowrap">✓ 已套用</span> </div>  </div> </div><div class="relative rounded-2xl border p-6 flex flex-col border-brand-500 bg-brand-500/5"> <div class="absolute -top-3 left-1/2 -translate-x-1/2"> <span class="inline-flex items-center rounded-full bg-brand-500 px-3 py-1 text-xs font-semibold text-white"> 最受歡迎 </span> </div> <h3 class="text-lg font-bold text-white">Growth</h3> <p class="mt-2 text-lg tracking-wide text-gray-400 min-h-[2rem]">AI 員工再升級，加速業務成長</p> <div class="mt-5 mb-8 flex items-baseline gap-1"> <span class="text-lg font-semibold text-white">月薪 2 萬</span>  </div> <ul class="space-y-3 flex-1 mb-8"> <li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class="">  <span class="font-medium text-white">更多 AI 使用額度</span> </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class="font-semibold text-white"> 專屬 NemoClaw 沙箱  </span> <span class="block text-xs text-gray-400 mt-1.5 leading-relaxed font-normal">客製化網路政策 · 網域白名單 · 資料完全隔離 · NVIDIA 企業級沙箱執行</span> </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 任務導向工作流 — 行銷、營運、內容持續擴充中  </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 預建工作流，針對成本效益優化  </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 多樣化 AI 模型，符合不同工作  </span>  </span> </li><li class="pl-[26px] text-xs text-gray-400 leading-relaxed !mt-1.5 flex items-start gap-2"> <span class="text-gray-500 leading-relaxed select-none">•</span> <span class="flex-1">Claude Haiku 快速完成日常任務</span> </li><li class="pl-[26px] text-xs text-gray-400 leading-relaxed !mt-1.5 flex items-start gap-2"> <span class="text-gray-500 leading-relaxed select-none">•</span> <span class="flex-1">Claude Sonnet 穩定應對多數需求</span> </li><li class="pl-[26px] text-xs text-gray-400 leading-relaxed !mt-1.5 flex items-start gap-2"> <span class="text-gray-500 leading-relaxed select-none">•</span> <span class="flex-1">MiniMax M2.5 · Kimi K2.5 — 成本優化，搭配工作流更省</span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> Clawmail AI 信箱管理功能  </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 最大 ZenClaw 實例數 (Instances) <span class="font-medium text-white ml-1">2 個</span> </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 工作區儲存空間 <span class="font-medium text-white ml-1">200 MB</span> </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class="">  <span class="font-medium text-white">優先 Email 支援</span> </span>  </span> </li> </ul> <astro-island uid="Z1p2Gg8" prefix="r4" component-url="/_astro/PricingButton.DyjwGQiU.js" component-export="default" renderer-url="/_astro/client.aV2KyXRk.js" props="{&quot;planId&quot;:[0,&quot;growth&quot;],&quot;label&quot;:[0,&quot;立即雇用&quot;],&quot;freeTrialLabel&quot;:[0,&quot;免費試用 7 天&quot;],&quot;apiUrl&quot;:[0,&quot;https://y6eto3cvn4xhkwdpku32n5op2y0rjvtb.lambda-url.us-east-1.on.aws&quot;],&quot;popular&quot;:[0,true],&quot;loadingText&quot;:[0,&quot;跳轉中...&quot;],&quot;redirectingText&quot;:[0,&quot;正在前往付款頁面...&quot;],&quot;upgradingText&quot;:[0,&quot;方案升級中...&quot;],&quot;currentPlanLabel&quot;:[0,&quot;目前方案&quot;],&quot;planName&quot;:[0,&quot;Growth&quot;],&quot;planPrice&quot;:[0,&quot;月薪 2 萬&quot;],&quot;planDescription&quot;:[0,&quot;AI 員工再升級，加速業務成長&quot;],&quot;planFeatures&quot;:[1,[[0,&quot;專屬 NemoClaw 沙箱&quot;],[0,&quot;任務導向工作流 — 行銷、營運、內容持續擴充中&quot;],[0,&quot;預建工作流，針對成本效益優化&quot;],[0,&quot;多樣化 AI 模型，符合不同工作&quot;],[0,&quot;Clawmail AI 信箱管理功能&quot;]]],&quot;couponPlanMismatchText&quot;:[0,&quot;此優惠碼僅適用於 Starter 方案。&quot;],&quot;endTrialI18n&quot;:[0,{&quot;title&quot;:[0,&quot;結束試用並升級？&quot;],&quot;desc&quot;:[0,&quot;升級方案需要先結束目前的 7 天免費試用，且結束後無法復原。\n\n確認結束試用並前往新方案的訂閱付款頁面嗎？&quot;],&quot;ok&quot;:[0,&quot;確認，前往付款&quot;],&quot;cancel&quot;:[0,&quot;保留試用&quot;],&quot;failedTitle&quot;:[0,&quot;處理失敗&quot;],&quot;failedDesc&quot;:[0,&quot;結束試用時發生錯誤，請稍後再試或聯絡客服。&quot;],&quot;failedOk&quot;:[0,&quot;知道了&quot;]}],&quot;trialSignupI18n&quot;:[0,{&quot;title&quot;:[0,&quot;啟動免費試用&quot;],&quot;subtitle&quot;:[0,&quot;需要您填一下基本資料來啟動合作夥伴試用，不到一分鐘。&quot;],&quot;companyEmail&quot;:[0,&quot;公司 Email&quot;],&quot;companyName&quot;:[0,&quot;公司名稱&quot;],&quot;fullName&quot;:[0,&quot;姓名&quot;],&quot;jobTitle&quot;:[0,&quot;職稱&quot;],&quot;consent&quot;:[0,&quot;點擊送出即表示同意 MixerBox AI ZenClaw 服務條款與隱私權政策，並可能收到產品更新與優惠通知。&quot;],&quot;submit&quot;:[0,&quot;開始免費試用&quot;],&quot;cancel&quot;:[0,&quot;取消&quot;],&quot;submitting&quot;:[0,&quot;送出中…&quot;],&quot;errInvalidEmail&quot;:[0,&quot;請輸入有效的 Email 地址。&quot;],&quot;errMissing&quot;:[0,&quot;請填寫所有欄位。&quot;],&quot;errConsent&quot;:[0,&quot;請勾選同意條款後再送出。&quot;],&quot;errAlreadyClaimed&quot;:[0,&quot;您已使用過此優惠碼。&quot;],&quot;errGeneric&quot;:[0,&quot;發生錯誤，請稍後再試。&quot;]}]}" client="load" opts="{&quot;name&quot;:&quot;PricingButton&quot;,&quot;value&quot;:true}" await-children=""><div class="h-[44px]"></div></astro-island>  <div class="mt-3 min-h-[2rem] flex items-center justify-center">  </div> </div><div class="relative rounded-2xl border p-6 flex flex-col border-gray-800 bg-gray-900/50">  <h3 class="text-lg font-bold text-white">Scale</h3> <p class="mt-2 text-lg tracking-wide text-gray-400 min-h-[2rem]">全面擴展 AI 員工能力，支撐高強度業務運作</p> <div class="mt-5 mb-8 flex items-baseline gap-1"> <span class="text-lg font-semibold text-white">月薪 3 萬</span>  </div> <ul class="space-y-3 flex-1 mb-8"> <li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class="">  <span class="font-medium text-white">AI 使用額度再擴充</span> </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class="font-semibold text-white"> 專屬 NemoClaw 沙箱  </span> <span class="block text-xs text-gray-400 mt-1.5 leading-relaxed font-normal">客製化網路政策 · 網域白名單 · 資料完全隔離 · NVIDIA 企業級沙箱執行</span> </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 任務導向工作流 — 行銷、營運、內容持續擴充中  </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 預建工作流，針對成本效益優化  </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 多樣化 AI 模型，符合不同工作  </span>  </span> </li><li class="pl-[26px] text-xs text-gray-400 leading-relaxed !mt-1.5 flex items-start gap-2"> <span class="text-gray-500 leading-relaxed select-none">•</span> <span class="flex-1">Claude Haiku 快速完成日常任務</span> </li><li class="pl-[26px] text-xs text-gray-400 leading-relaxed !mt-1.5 flex items-start gap-2"> <span class="text-gray-500 leading-relaxed select-none">•</span> <span class="flex-1">Claude Sonnet 穩定應對多數需求</span> </li><li class="pl-[26px] text-xs text-gray-400 leading-relaxed !mt-1.5 flex items-start gap-2"> <span class="text-gray-500 leading-relaxed select-none">•</span> <span class="flex-1">Claude Opus 處理高難度任務</span> </li><li class="pl-[26px] text-xs text-gray-400 leading-relaxed !mt-1.5 flex items-start gap-2"> <span class="text-gray-500 leading-relaxed select-none">•</span> <span class="flex-1">MiniMax M2.5 · Kimi K2.5 — 成本優化，搭配工作流更省</span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> Clawmail AI 信箱管理功能  </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 最大 ZenClaw 實例數 (Instances) <span class="font-medium text-white ml-1">3 個</span> </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class=""> 工作區儲存空間 <span class="font-medium text-white ml-1">300 MB</span> </span>  </span> </li><li class="flex items-start gap-2.5 text-sm text-gray-300"> <svg class="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path> </svg> <span class="flex-1"> <span class="">  <span class="font-medium text-white">專屬技術顧問</span> </span>  </span> </li> </ul> <astro-island uid="2qGpgS" prefix="r5" component-url="/_astro/PricingButton.DyjwGQiU.js" component-export="default" renderer-url="/_astro/client.aV2KyXRk.js" props="{&quot;planId&quot;:[0,&quot;scale&quot;],&quot;label&quot;:[0,&quot;立即雇用&quot;],&quot;freeTrialLabel&quot;:[0,&quot;免費試用 7 天&quot;],&quot;apiUrl&quot;:[0,&quot;https://y6eto3cvn4xhkwdpku32n5op2y0rjvtb.lambda-url.us-east-1.on.aws&quot;],&quot;popular&quot;:[0],&quot;loadingText&quot;:[0,&quot;跳轉中...&quot;],&quot;redirectingText&quot;:[0,&quot;正在前往付款頁面...&quot;],&quot;upgradingText&quot;:[0,&quot;方案升級中...&quot;],&quot;currentPlanLabel&quot;:[0,&quot;目前方案&quot;],&quot;planName&quot;:[0,&quot;Scale&quot;],&quot;planPrice&quot;:[0,&quot;月薪 3 萬&quot;],&quot;planDescription&quot;:[0,&quot;全面擴展 AI 員工能力，支撐高強度業務運作&quot;],&quot;planFeatures&quot;:[1,[[0,&quot;專屬 NemoClaw 沙箱&quot;],[0,&quot;任務導向工作流 — 行銷、營運、內容持續擴充中&quot;],[0,&quot;預建工作流，針對成本效益優化&quot;],[0,&quot;多樣化 AI 模型，符合不同工作&quot;],[0,&quot;Clawmail AI 信箱管理功能&quot;]]],&quot;couponPlanMismatchText&quot;:[0,&quot;此優惠碼僅適用於 Starter 方案。&quot;],&quot;endTrialI18n&quot;:[0,{&quot;title&quot;:[0,&quot;結束試用並升級？&quot;],&quot;desc&quot;:[0,&quot;升級方案需要先結束目前的 7 天免費試用，且結束後無法復原。\n\n確認結束試用並前往新方案的訂閱付款頁面嗎？&quot;],&quot;ok&quot;:[0,&quot;確認，前往付款&quot;],&quot;cancel&quot;:[0,&quot;保留試用&quot;],&quot;failedTitle&quot;:[0,&quot;處理失敗&quot;],&quot;failedDesc&quot;:[0,&quot;結束試用時發生錯誤，請稍後再試或聯絡客服。&quot;],&quot;failedOk&quot;:[0,&quot;知道了&quot;]}],&quot;trialSignupI18n&quot;:[0,{&quot;title&quot;:[0,&quot;啟動免費試用&quot;],&quot;subtitle&quot;:[0,&quot;需要您填一下基本資料來啟動合作夥伴試用，不到一分鐘。&quot;],&quot;companyEmail&quot;:[0,&quot;公司 Email&quot;],&quot;companyName&quot;:[0,&quot;公司名稱&quot;],&quot;fullName&quot;:[0,&quot;姓名&quot;],&quot;jobTitle&quot;:[0,&quot;職稱&quot;],&quot;consent&quot;:[0,&quot;點擊送出即表示同意 MixerBox AI ZenClaw 服務條款與隱私權政策，並可能收到產品更新與優惠通知。&quot;],&quot;submit&quot;:[0,&quot;開始免費試用&quot;],&quot;cancel&quot;:[0,&quot;取消&quot;],&quot;submitting&quot;:[0,&quot;送出中…&quot;],&quot;errInvalidEmail&quot;:[0,&quot;請輸入有效的 Email 地址。&quot;],&quot;errMissing&quot;:[0,&quot;請填寫所有欄位。&quot;],&quot;errConsent&quot;:[0,&quot;請勾選同意條款後再送出。&quot;],&quot;errAlreadyClaimed&quot;:[0,&quot;您已使用過此優惠碼。&quot;],&quot;errGeneric&quot;:[0,&quot;發生錯誤，請稍後再試。&quot;]}]}" client="load" opts="{&quot;name&quot;:&quot;PricingButton&quot;,&quot;value&quot;:true}" await-children=""><button class="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold w-full border border-gray-700 text-gray-500 cursor-not-allowed opacity-60" disabled="">目前方案</button></astro-island>  <div class="mt-3 min-h-[2rem] flex items-center justify-center">  </div> </div> </div> <script>
+    (function () {
+      // Active campaign coupons. Keep in sync with the matching sets in
+      // lambda/zenclaw-dashboard-api/src/api.ts (TRIAL_COUPON_CODES /
+      // STARTER_ONLY_COUPONS / REQUIRES_TRIAL_SIGNUP).
+      var VALID = ['GCS7FREE', 'AWS7FREE', 'CLAW7FREE'];
+      var STARTER_ONLY = ['GCS7FREE', 'AWS7FREE', 'CLAW7FREE'];
+      var REQUIRES_SIGNUP = ['GCS7FREE', 'AWS7FREE', 'CLAW7FREE'];
+      window.__zcCoupon = { code: '', valid: false, starterOnly: false, requiresSignup: false };
+      var inputs = document.querySelectorAll('#zc-coupon-input');
+      var statuses = document.querySelectorAll('#zc-coupon-status');
+      var toggle = document.getElementById('zc-coupon-toggle');
+      var row = document.getElementById('zc-coupon-row');
+      if (toggle && row) {
+        toggle.addEventListener('click', function () {
+          toggle.classList.add('hidden');
+          row.classList.remove('hidden');
+          row.classList.add('flex');
+          var firstInput = row.querySelector('input');
+          if (firstInput) firstInput.focus();
+        });
+      }
+      function sync(val) {
+        var trimmed = (val || '').trim().toUpperCase();
+        var isValid = VALID.indexOf(trimmed) !== -1;
+        window.__zcCoupon = {
+          code: trimmed,
+          valid: isValid,
+          starterOnly: isValid && STARTER_ONLY.indexOf(trimmed) !== -1,
+          requiresSignup: isValid && REQUIRES_SIGNUP.indexOf(trimmed) !== -1,
+        };
+        statuses.forEach(function (s) { s.classList.toggle('hidden', !isValid); });
+        window.dispatchEvent(new CustomEvent('zc-coupon-change', { detail: window.__zcCoupon }));
+      }
+      inputs.forEach(function (el) {
+        el.value = '';
+        el.addEventListener('input', function (e) { sync(e.target.value); });
+      });
+    })();
+  </script> <script type="module" src="/_astro/PricingCards.astro_astro_type_script_index_0_lang.11QhFF8Q.js"></script> </div> </div> </div> <!-- Network Policy Editor modal --> <div id="policy-modal" class="fixed inset-0 z-50 hidden"> <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="policy-modal-backdrop"></div> <div class="relative flex min-h-full items-center justify-center p-4"> <div class="w-full max-w-2xl rounded-2xl border border-gray-700 bg-gray-900 p-6 shadow-xl"> <div class="flex items-center justify-between mb-4"> <h3 class="text-lg font-semibold text-white" id="policy-title-text">網路政策</h3> <button id="policy-close-btn" type="button" class="text-gray-400 hover:text-white transition-colors"> <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> </button> </div> <div id="policy-loading" class="flex items-center justify-center py-12"> <span class="h-6 w-6 rounded-full border-2 border-gray-600 border-t-brand-500 animate-spin"></span> <span class="ml-3 text-sm text-gray-400">正在載入目前的政策...</span> </div> <div id="policy-read-error" class="hidden text-center py-8"> <p class="text-sm text-red-400 mb-4">網路與檔案存取政策控制僅適用於較新的 NemoClaw 實例。</p> <button id="policy-retry-btn" type="button" class="rounded-lg border border-gray-600 px-4 py-2 text-sm font-semibold text-gray-300 hover:bg-gray-700 transition-colors">重試</button> </div> <!-- EKS preset editor (shown only when runtime=eks-nemoclaw) --> <div id="policy-eks-editor" class="hidden"> <fieldset class="space-y-4"> <legend class="text-sm font-medium text-gray-300 mb-3">政策預設</legend> <label class="flex items-start gap-3 cursor-pointer"> <input type="radio" name="policy-preset" value="open-web" class="mt-1"> <div> <div class="text-sm font-semibold text-white">開放網路</div> <div class="text-xs text-gray-400">可存取所有 HTTPS 端點（預設）。</div> </div> </label> <label class="flex items-start gap-3 cursor-pointer"> <input type="radio" name="policy-preset" value="locked-down" class="mt-1"> <div class="flex-1"> <div class="text-sm font-semibold text-white">限制模式</div> <div class="text-xs text-gray-400 mb-2">只能存取下方列出的網域，其他皆封鎖。</div> <textarea id="policy-allowlist" rows="8" spellcheck="false" class="hidden mt-2 block w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 font-mono text-sm text-white placeholder-gray-500" placeholder="github.com
+api.openai.com
+*.anthropic.com"></textarea> <p id="policy-allowlist-error" class="hidden mt-1 text-xs text-red-400"></p> </div> </label> <label class="flex items-start gap-3 cursor-pointer"> <input type="radio" name="policy-preset" value="custom" class="mt-1"> <div class="flex-1"> <div class="text-sm font-semibold text-white">自訂（進階）</div> <div class="text-xs text-gray-400 mb-2">原始 OpenShell network_policies JSON。</div> <textarea id="policy-custom-json" rows="12" spellcheck="false" class="hidden mt-2 block w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 font-mono text-xs text-white placeholder-gray-500"></textarea> <p id="policy-custom-error" class="hidden mt-1 text-xs text-red-400"></p> </div> </label> </fieldset> <p id="policy-eks-update-error" class="mt-4 text-sm text-red-400 hidden"></p> <p id="policy-eks-update-success" class="mt-4 text-sm text-emerald-400 hidden">政策已成功更新。</p> <div class="flex justify-end gap-3 mt-6"> <button id="policy-eks-cancel-btn" type="button" class="rounded-lg border border-gray-600 px-4 py-2 text-sm font-semibold text-gray-300 hover:bg-gray-700 transition-colors">取消</button> <button id="policy-eks-save-btn" type="button" disabled="" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"> <span id="policy-eks-save-spinner" class="hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span> 儲存 </button> </div> </div> <div id="policy-editor-wrap" class="hidden"> <textarea id="policy-editor" rows="20" spellcheck="false" class="w-full rounded-lg border border-gray-600 bg-gray-800 p-3 text-sm text-gray-200 font-mono focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none resize-y" placeholder="Loading..."></textarea> <p id="policy-json-error" class="mt-1 text-xs text-red-400 hidden">無效的 JSON</p> <p id="policy-update-error" class="mt-2 text-sm text-red-400 hidden"></p> <p id="policy-update-success" class="mt-2 text-sm text-emerald-400 hidden">政策已成功更新。</p> <div class="mt-4 flex justify-end gap-3"> <button id="policy-cancel-btn" type="button" class="rounded-lg border border-gray-600 px-4 py-2 text-sm font-semibold text-gray-300 hover:bg-gray-700 transition-colors">取消</button> <button id="policy-save-btn" type="button" disabled="" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"> <span id="policy-save-spinner" class="hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span> 儲存 </button> </div> </div> </div> </div> </div> <!-- Policy update confirmation dialog --> <div id="policy-confirm-modal" class="fixed inset-0 z-[60] hidden"> <div class="absolute inset-0 bg-black/40"></div> <div class="relative flex min-h-full items-center justify-center p-4"> <div class="w-full max-w-sm rounded-2xl border border-gray-700 bg-gray-900 p-6 shadow-xl text-center"> <p class="text-sm text-gray-300 mb-6">這將會套用新的網路政策到您的實例。部分連線可能會暫時中斷。</p> <div class="flex gap-3 justify-center"> <button id="policy-confirm-cancel" type="button" class="rounded-lg border border-gray-600 px-4 py-2 text-sm font-semibold text-gray-300 hover:bg-gray-700 transition-colors">取消</button> <button id="policy-confirm-ok" type="button" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 transition-colors">確認</button> </div> </div> </div> </div> <!-- Hidden i18n data for dashboard --> <div id="dash-i18n" class="hidden" data-api-url="https://y6eto3cvn4xhkwdpku32n5op2y0rjvtb.lambda-url.us-east-1.on.aws" data-backlog-msg="由於爆量的使用需求（感謝大家！），目前暫時沒有可用的新機器。我們已將您的請求加入排隊，預計 15 分鐘內就會為您準備好。" data-rehydrating-msg="正在喚醒你的助理——稍等一下。" data-active="你的安裝已就緒！" data-agent-email-label="代理人信箱" data-celebration-headline="完成。" data-celebration-subtext="通常需要數小時的設定，你剛跳過了全部。" data-celebration-elapsed="{seconds} 秒上線" data-celebration-cta="給我看" data-model-label="模型" data-model-placeholder="選擇模型..." data-model-vision-marker="支援圖片" data-model-change-model="切換模型" data-model-refresh-model="重新讀取模型" data-model-litellm="LiteLLM" data-is-staging="true" data-show-box-selector="true" data-line-deep-link="https://line.me/R/ti/p/@480squtk" data-ui-locale="zh" data-model-custom="輸入 OpenRouter Model ID" data-model-custom-desc="輸入 OpenRouter Model ID 作為語言模型。" data-model-custom-placeholder="例如 anthropic/claude-sonnet-4.6" data-model-save="套用" data-model-applying="正在套用模型變更..." data-model-success="模型已更新。" data-model-error="模型更新失敗。" data-model-timeout="模型更新逾時。" data-model-reset-prompt="是否開始新對話以使用新模型？目前的對話將被取代。你也可以稍後在聊天對話中輸入 /new 來開始使用新模型。" data-model-reset-yes="開始新對話" data-model-reset-no="保留目前對話" data-model-resetting="正在重置對話..." data-model-reset-success="已開始使用新模型的對話。" data-model-reset-error="對話重置失敗。" data-model-reset-timeout="對話重置逾時。" data-model-upgrade-title="需要升級方案" data-model-upgrade-desc="此模型不適用於您目前的方案，請升級以解鎖。" data-model-upgrade-ok="查看方案" data-model-upgrade-cancel="取消" data-language-label="機器語言" data-language-save="套用" data-language-applying="套用語言變更中..." data-language-success="機器語言已更新。" data-language-error="更新機器語言失敗。" data-language-timeout="語言更新逾時。" data-language-option-en="English" data-language-option-zh="中文（繁體）" data-language-option-ja="日本語" data-label-placeholder="新增標籤..." data-label-saving="儲存中..." data-label-error="標籤儲存失敗。" data-visit-control-ui="開啟 ControlUI" data-channels-title="連結頻道" data-tg-title="Telegram" data-tg-description="透過 Telegram 與你的 AI 助理聊天。" data-tg-step1="在 Telegram 上開啟 @BotFather" data-tg-step2="發送 /newbot，按照提示操作並複製 token" data-tg-step3="在下方貼上你的 bot token" data-tg-hint="💡 提示：你可以直接貼上整段 BotFather 訊息，我們會自動提取 token" data-tg-placeholder="123456:ABC-DEF..." data-tg-submit="連結" data-tg-submitting="連結中..." data-tg-configuring="設定中⋯⋯" data-tg-configuring-hint="大約需要 1 至 3 分鐘，看到右上角「已連結」徽章才算完成；Bot 準備好後請依下方步驟完成配對。" data-tg-success="Bot 已就位 — 還剩一步：配對你的 Telegram 帳號" data-tg-open-bot="開啟 Bot" data-tg-connected="已連結" data-tg-disconnect-confirm="確定要解除 Telegram 連結嗎？解除後需要重新輸入 bot token 配對。" data-tg-disconnect-button="解除連結" data-tg-disconnect-cancel="取消" data-tg-disconnecting="解除中..." data-tg-disconnect-error="解除失敗，請重試。" data-tg-invalid-token="無效的 bot token，請檢查後再試。" data-tg-policy-blocked="網路政策封鎖了 api.telegram.org。請將它加入「鎖定模式」白名單，或改為「開放網路」後再試一次。" data-tg-error="連結失敗，請重試。" data-pairing-title="配對你的 Telegram 帳號" data-pairing-step1="在 Telegram 上開啟你的 bot，發送任意訊息" data-pairing-step2="Bot 會回覆一組 8 位配對碼" data-pairing-step3="在下方輸入配對碼" data-pairing-hint="💡 提示：你可以直接貼上整段 Bot 訊息，我們會自動提取配對碼" data-pairing-placeholder="例如 AB2CD3EF" data-pairing-submit="確認配對" data-pairing-submitting="配對中..." data-pairing-success="配對成功！你現在可以跟 Bot 聊天了。" data-pairing-invalid-code="無效的配對碼。配對碼為 8 位英數字元。" data-pairing-error="配對失敗，請重試。" data-pair-qr-title="用手機掃描" data-pair-qr-subtitle="開啟 Telegram、按 START，即會自動完成綁定。" data-pair-qr-open-on-device="在這台裝置開啟 Telegram" data-pair-qr-fallback-hint="無法掃描？請改用下方手動配對碼。" data-pair-qr-waiting="等待你在 Telegram 完成配對⋯⋯" data-pair-try-qr="✨ 試試新的 QR 配對（beta）" data-ms-title="Microsoft Teams" data-ms-description="透過 Microsoft Teams 與你的 AI 助手對話。" data-ms-step1="複製上方的&lt;strong&gt;訊息端點網址&lt;/strong&gt;" data-ms-step2="到 &lt;a href=&quot;https://portal.azure.com/#create/Microsoft.AzureBot&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot; class=&quot;text-sky-400 underline hover:no-underline&quot;&gt;Azure Portal&lt;/a&gt; 建立 Azure Bot（選 Single Tenant）" data-ms-step3="把網址貼到 Bot → Configuration → &lt;strong&gt;Messaging endpoint&lt;/strong&gt;" data-ms-step4="複製 &lt;strong&gt;App ID&lt;/strong&gt;，建立 &lt;strong&gt;Client Secret&lt;/strong&gt;，再複製 &lt;strong&gt;Tenant ID&lt;/strong&gt;" data-ms-step5="回來填入以下欄位，按下連線" data-ms-app-id-placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" data-ms-app-password-placeholder="用戶端密碼值" data-ms-tenant-id-placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" data-ms-submit="連接" data-ms-submitting="連接中..." data-ms-connected="已連接" data-ms-invalid-credentials="憑證無效。請檢查 App ID、密碼和 Tenant ID。" data-ms-error="連接失敗，請重試。" data-ms-webhook-title="訊息端點網址" data-ms-webhook-copied="已複製！" data-ms-copy-webhook="複製 Webhook URL" data-ms-success-message="MS Teams 連線成功！現在可以在 Teams 上跟你的 AI 助手聊天了。" data-ms-configuring-phase1="正在設定 MS Teams..." data-ms-configuring-phase2="等待 AI Gateway 重新啟動...（AI 暫時無法回應）" data-ms-timeout-error="設定逾時。Gateway 可能仍在重啟中，請稍候再試。" data-ms-retry="重試" data-ms-show-webhook="顯示 Webhook URL" data-ms-hide-webhook="隱藏 Webhook URL" data-ms-reconfigure="重新設定" data-ms-reconfigure-confirm="重新設定 MS Teams？這將短暫重啟 AI Gateway。" data-ms-cancel-reconfigure="取消" data-ms-disconnect="解除連接" data-ms-disconnect-confirm="確定解除 MS Teams 連接？這將停止 Webhook 通道並停用 MS Teams 插件，AI 將短暫重啟。" data-ms-disconnecting="解除連接中..." data-ms-disconnect-error="解除連接失敗，請重試。" data-line-title="LINE" data-line-description="透過 LINE 與你的 AI 助理聊天。" data-line-connected="已連結" data-line-pairing-title="配對你的 LINE 帳號" data-line-pairing-step1="點擊下方的「產生配對碼」取得一組配對碼" data-line-pairing-step2="在 LINE 加入 @zenclawai 為好友" data-line-pairing-step3="將配對碼傳給機器人，配對會自動完成" data-line-pairing-hint="" data-line-pairing-success="配對成功！你現在可以透過 LINE 聊天了。" data-line-pairing-error="發生錯誤，請重試。" data-line-generate-code="產生配對碼" data-line-generating-code="產生中..." data-line-regenerate-code="重新產生配對碼" data-line-code-expires-in="{time} 後過期" data-line-code-expired="已過期，請重新產生" data-line-code-waiting="請將配對碼傳給 @zenclawai 以完成配對..." data-line-copy-code="複製" data-line-copied="已複製！" data-line-single-binding-note="注意：一個 LINE 帳號只能綁定一台 instance。若要配對其他 instance，請先解除目前綁定。" data-line-already-paired-note="你的 LINE 帳號已經綁定其他 instance，請先到該 instance 解除綁定，再回來這裡產生新的配對碼。" data-line-multi-session-hint="小提示：配對完成後，你可以在 LINE 自行建立新群組（只邀請 bot），每個群組就是一個獨立的對話 session，無需重新配對。" data-line-unpair-button="解除 LINE 綁定" data-line-unpair-confirm="確定要解除 LINE 綁定嗎？之後可以隨時重新配對。" data-line-unpairing="解除中..." data-line-unpair-success="已解除 LINE 綁定。" data-line-unpair-error="解除綁定失敗，請重試。" data-mbai-title="MixerBox AI Chat" data-mbai-description="透過 MixerBox AI App 與此 AI 助手聊天" data-mbai-connected="已連接" data-mbai-pending="正在建立機器人帳號..." data-mbai-installing="正在安裝外掛程式..." data-mbai-verifying="正在驗證..." data-mbai-failed="失敗" data-mbai-pair-button="整合 MB AI" data-mbai-retry-button="重試整合" data-mbai-pairing="設定中..." data-mbai-success="機器人帳號和聊天室已建立。用戶現在可以在 MixerBox AI App 中與此實例對話。" data-mbai-open-chat="開啟聊天" data-mbai-open-chat-preparing="聊天準備中..." data-mbai-open-chat-timeout="聊天外掛仍在初始化，請稍後再試。" data-mbai-open-chat-click-again="已就緒 — 再點一次開啟" data-mbai-bot-name-placeholder="ZenClaw AI" data-mbai-saving-bot="儲存中..." data-mbai-launcher-room-name="我的聊天室" data-mbai-plugin-version="Plugin" data-mbai-plugin-latest="最新" data-mbai-plugin-update-available="有更新可用" data-mbai-plugin-version-unknown="版本未知" data-mbai-update-plugin="更新 Plugin" data-mbai-retry-update="重試更新" data-mbai-updating="更新中…" data-mbai-update-failed="更新失敗" data-mbai-update-warning="需時約 1 分鐘，機器人將短暫離線。" data-mbai-save-name="儲存" data-mbai-cancel-edit="取消" data-mbai-edit-name-title="編輯" data-mbai-change-avatar-title="更換頭像" data-mbai-save-error="錯誤" data-teardown-button="刪除安裝" data-teardown-confirm-title="確定要刪除嗎？" data-teardown-confirm-desc="此操作將永久關閉此安裝，無法復原。" data-teardown-confirm="確認刪除" data-teardown-cancel="取消" data-teardown-deleting="刪除中..." data-teardown-error="刪除失敗，請重試。" data-doctor-fix-button="修復並重啟" data-doctor-fix-modal-title="修復並重啟閘道" data-doctor-fix-modal-desc="這將修復無效的設定並重新啟動閘道。您的機器人將離線約 30-60 秒。" data-doctor-fix-confirm="確認修復" data-doctor-fix-cancel="取消" data-doctor-fix-step-fix="修復設定中..." data-doctor-fix-step-restart="重新啟動中..." data-doctor-fix-step-verify="驗證狀態中..." data-doctor-fix-success="閘道已修復！" data-doctor-fix-failed="修復失敗，請重試或聯繫客服。" data-doctor-fix-timeout="修復時間比預期長，請稍後再回來查看。" data-doctor-fix-retry="重試" data-doctor-fix-close="關閉" data-stopped-headline="此 AI 助理目前休眠中" data-stopped-subtext="超過 7 天沒使用，已自動暫停以節省資源。資料保留中，可隨時喚醒。" data-stopped-wake-up="喚醒" data-unrecoverable-headline="此 AI 助理閒置太久，無法復原" data-unrecoverable-subtext="內部狀態已遺失。請刪除後重新建立。" data-wake-up-modal-title="喚醒 AI 助理" data-wake-up-modal-desc="這將重新啟動實例並還原您上次離開時的狀態。預計需要 30-60 秒。" data-wake-up-confirm="確認喚醒" data-wake-up-cancel="取消" data-wake-up-step-start="啟動實例中..." data-wake-up-step-restore="還原資料中..." data-wake-up-step-ready="驗證可用性..." data-summary="{ready} 個就緒、{deploying} 個部署中" data-deploy="新增 OpenClaw 安裝" data-deploy-dedicated="新增專屬主機" data-deploy-standard="新增標準主機" data-deploying="部署中..." data-box-dedicated="專屬" data-box-standard="標準" data-box-dedicated-desc="常駐運行、專屬資源" data-box-dedicated-locked="需要升級方案" data-box-free-label="免費" data-limit-msg="若超出使用配額，請聯繫 &lt;a href=&quot;mailto:zenclaw-sales@mixerbox.com&quot; class=&quot;underline hover:text-gray-200&quot;&gt;zenclaw-sales@mixerbox.com&lt;/a&gt; 提升配額" data-deploy-limit="如需更多安裝，請聯繫 &lt;a href=&quot;mailto:zenclaw-sales@mixerbox.com&quot; class=&quot;underline hover:text-amber-300&quot;&gt;zenclaw-sales@mixerbox.com&lt;/a&gt;" data-quota-title="已達安裝上限" data-quota-desc="您的方案已達最大安裝數量。如需更多配額，請聯繫 zenclaw-sales@mixerbox.com。" data-quota-ok="知道了" data-subscribe-success="訂閱成功！" data-subscribe-success-desc="您的訂閱已啟用，立即享受進階功能！" data-subscribe-trial-success="免費試用已啟動！" data-subscribe-trial-success-desc="您的 7 天免費試用期已開始。試用結束後將自動停止，不會收取任何費用。" data-subscribe-success-ok="知道了" data-policy-button="編輯網路政策" data-policy-title="網路政策" data-policy-loading="正在載入目前的政策..." data-policy-read-error="網路與檔案存取政策控制僅適用於較新的 NemoClaw 實例。" data-policy-retry="重試" data-policy-invalid-json="無效的 JSON" data-policy-update-success="政策已成功更新。" data-policy-update-timeout="等待政策更新逾時" data-policy-network-error="網路錯誤" data-policy-cancel="取消" data-policy-save="儲存" data-policy-confirm-title="更新網路政策？" data-policy-confirm-desc="這將會套用新的網路政策到您的實例。部分連線可能會暫時中斷。" data-policy-confirm="確認" data-policy-preset-label="政策預設" data-policy-preset-open-web="開放網路" data-policy-preset-open-web-desc="可存取所有 HTTPS 端點（預設）。" data-policy-preset-locked-down="限制模式" data-policy-preset-locked-down-desc="只能存取下方列出的網域，其他皆封鎖。" data-policy-preset-custom="自訂（進階）" data-policy-preset-custom-desc="原始 OpenShell network_policies JSON。" data-policy-allowed-domains-placeholder="github.com
+api.openai.com
+*.anthropic.com" data-policy-invalid-domain="無效網域：{domain}" data-policy-too-many-domains="網域過多（上限 50）" data-policy-custom-json-error="JSON 格式錯誤"></div>  <script type="module" src="/_astro/Dashboard.astro_astro_type_script_index_0_lang.DQhlH52p.js"></script> <footer class="border-t border-gray-800/50 py-12"> <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8"> <div class="flex flex-col items-center gap-8"> <!-- Logo --> <a href="/zh/"> <img src="/zenclaw-logo-zh.png" alt="ZenClaw AI" class="h-8 w-auto"> </a> <!-- Attribution --> <p class="text-sm text-gray-500 text-center">zenclaw.ai 由 <a href="https://www.mixerbox.com" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-300">MixerBox Inc.</a> 擁有和營運，MixerBox 是 Y Combinator 公司。</p> <p class="text-xs text-gray-600"> © 2026 MixerBox Inc. 保留所有權利。 </p> </div> </div> </footer>  <!-- Global confirm dialog (exposes window.__zcConfirm). Mounted once,
+         used by Dashboard, PricingButton, and any other client script. --> <div id="zc-confirm-dialog" class="fixed inset-0 z-[200] hidden"> <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="zc-confirm-backdrop"></div> <div class="relative flex min-h-full items-center justify-center p-4"> <div class="w-full max-w-sm rounded-2xl border border-gray-700 bg-gray-900 p-6 shadow-xl text-center"> <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-800" id="zc-confirm-icon-wrap"> <svg id="zc-confirm-icon" class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"></path> </svg> </div> <h3 id="zc-confirm-title" class="text-lg font-semibold text-white mb-2"></h3> <p id="zc-confirm-desc" class="text-sm text-gray-400 mb-4 whitespace-pre-line"></p> <div id="zc-confirm-input-wrap" class="hidden mb-4"> <input id="zc-confirm-input" type="text" class="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"> </div> <div class="flex gap-3 justify-center"> <button id="zc-confirm-cancel-btn" type="button" class="rounded-lg border border-gray-600 px-5 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-700"></button> <button id="zc-confirm-ok-btn" type="button" class="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-500"></button> </div> </div> </div> </div> <script>
+  (function () {
+    function getEls() {
+      return {
+        dialog: document.getElementById("zc-confirm-dialog"),
+        backdrop: document.getElementById("zc-confirm-backdrop"),
+        title: document.getElementById("zc-confirm-title"),
+        desc: document.getElementById("zc-confirm-desc"),
+        okBtn: document.getElementById("zc-confirm-ok-btn"),
+        cancelBtn: document.getElementById("zc-confirm-cancel-btn"),
+        inputWrap: document.getElementById("zc-confirm-input-wrap"),
+        input: document.getElementById("zc-confirm-input"),
+      };
     }
 
-    /* ── 部署流程 ── */
-    function startDeploy() {
-      document.querySelectorAll('.split-dropdown').forEach(d => d.classList.remove('open'));
+    function zcConfirm(opts) {
+      return new Promise(function (resolve) {
+        var e = getEls();
+        if (!e.dialog) {
+          // DOM not parsed yet — extremely unlikely with is:inline placement
+          // after the dialog div, but bail gracefully rather than throw.
+          resolve(false);
+          return;
+        }
+        e.title.textContent = opts.title || "";
+        e.title.classList.toggle("hidden", !opts.title);
+        e.desc.textContent = opts.desc || "";
+        e.okBtn.textContent = opts.ok || "OK";
+        e.cancelBtn.textContent = opts.cancel || "";
+        if (opts.cancel) e.cancelBtn.classList.remove("hidden");
+        else e.cancelBtn.classList.add("hidden");
 
-      const emptyView   = document.getElementById('view-empty');
-      const dashView    = document.getElementById('view-dashboard');
-      const deployState = document.getElementById('deploy-state');
+        if (opts.danger) {
+          e.okBtn.classList.remove("bg-brand-600", "hover:bg-brand-500");
+          e.okBtn.classList.add("bg-red-500", "hover:bg-red-400");
+        } else {
+          e.okBtn.classList.remove("bg-red-500", "hover:bg-red-400");
+          e.okBtn.classList.add("bg-brand-600", "hover:bg-brand-500");
+        }
 
-      emptyView.classList.add('leaving');
+        var hasInput = !!opts.input;
+        if (hasInput) {
+          e.inputWrap.classList.remove("hidden");
+          e.input.placeholder = opts.input.placeholder || "";
+          e.input.value = opts.input.value || "";
+          e.okBtn.disabled = !e.input.value.trim();
+        } else {
+          e.inputWrap.classList.add("hidden");
+          e.okBtn.disabled = false;
+        }
 
-      setTimeout(() => {
-        emptyView.style.display = 'none';
-        deployState.style.display = 'flex';
-        dashView.classList.add('active');
+        e.dialog.classList.remove("hidden");
+        if (hasInput) e.input.focus();
 
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          dashView.classList.add('entering');
-        }));
+        function cleanup() {
+          e.dialog.classList.add("hidden");
+          e.inputWrap.classList.add("hidden");
+          e.okBtn.removeEventListener("click", onOk);
+          e.cancelBtn.removeEventListener("click", onCancel);
+          e.backdrop.removeEventListener("click", onCancel);
+          e.input.removeEventListener("input", onInput);
+          e.input.removeEventListener("keydown", onKeydown);
+        }
+        function onOk() { cleanup(); resolve(hasInput ? e.input.value.trim() : true); }
+        function onCancel() { cleanup(); resolve(hasInput ? "" : false); }
+        function onInput() { e.okBtn.disabled = !e.input.value.trim(); }
+        function onKeydown(ev) {
+          if (ev.key === "Enter" && e.input.value.trim()) { ev.preventDefault(); onOk(); }
+          if (ev.key === "Escape") { ev.preventDefault(); onCancel(); }
+        }
 
-        setTimeout(runProgress, 80);
-      }, 360);
+        e.okBtn.addEventListener("click", onOk);
+        e.cancelBtn.addEventListener("click", onCancel);
+        e.backdrop.addEventListener("click", onCancel);
+        if (hasInput) {
+          e.input.addEventListener("input", onInput);
+          e.input.addEventListener("keydown", onKeydown);
+        }
+      });
     }
 
-    function runProgress() {
-      const fill     = document.getElementById('deploy-fill');
-      const pct      = document.getElementById('deploy-pct');
-      const duration = 2800;
-      const tick     = 30;
-      let elapsed    = 0;
-
-      const timer = setInterval(() => {
-        elapsed += tick;
-        const t        = Math.min(elapsed / duration, 1);
-        const progress = (1 - (1 - t) * (1 - t)) * 100;
-        fill.style.width = progress.toFixed(1) + '%';
-        pct.textContent  = Math.round(progress) + '%';
-
-        if (t >= 1) { clearInterval(timer); showSuccess(); }
-      }, tick);
-    }
-
-    function showSuccess() {
-      const deployState = document.getElementById('deploy-state');
-      const successState = document.getElementById('success-state');
-
-      deployState.style.opacity    = '0';
-      deployState.style.transition = 'opacity 0.28s ease';
-
-      setTimeout(() => {
-        deployState.style.display = 'none';
-        successState.classList.add('visible');
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          successState.classList.add('animate');
-        }));
-      }, 280);
-    }
-
-    function showDetail() {
-      const successState = document.getElementById('success-state');
-      const detailState  = document.getElementById('detail-state');
-
-      successState.style.opacity    = '0';
-      successState.style.transition = 'opacity 0.25s ease';
-
-      setTimeout(() => {
-        successState.style.display = 'none';
-        detailState.classList.add('visible');
-        detailState.style.opacity    = '0';
-        detailState.style.transform  = 'translateY(10px)';
-        detailState.style.transition = 'opacity 0.36s ease, transform 0.36s ease';
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          detailState.style.opacity   = '1';
-          detailState.style.transform = 'none';
-        }));
-      }, 250);
-    }
-
-    /* ── 頻道展開/收合 ── */
-    function toggleChannel(card) {
-      card.classList.toggle('expanded');
-    }
-
-    /* ── 複製按鈕回饋 ── */
-    function copyFeedback(btn) {
-      const orig = btn.innerHTML;
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>';
-      setTimeout(() => { btn.innerHTML = orig; }, 1200);
-    }
-  </script>
-
-</body>
-</html>
+    window.__zcConfirm = zcConfirm;
+  })();
+</script> <!-- Alternate strings for noOpenClaw mode --> <div id="no-oc-data" class="hidden" data-meta-title="ZenClaw AI：9 秒完成 AI 代理設定！" data-meta-description="一鍵完成 AI 代理架設，告別繁瑣設定，簡單、安全、穩定。" data-hero-headline="9 秒設定
+你的 AI 代理！" data-hero-subheadline="Zen in. Chaos out. 一鍵設定，輕鬆運行你的 AI 代理。" data-dashboard-title="AI 代理實例" data-dashboard-empty="尚無 AI 代理安裝。" data-dashboard-deploy="新增 AI 代理安裝"></div> <script type="module" src="/_astro/BaseLayout.astro_astro_type_script_index_0_lang.DifwRgQp.js"></script> <script type="module" src="/_astro/BaseLayout.astro_astro_type_script_index_1_lang.B_uYDZfP.js"></script>   <script>(()=>{var e=async t=>{await(await t())()};(self.Astro||(self.Astro={})).only=e;window.dispatchEvent(new Event("astro:only"));})();</script><astro-island uid="iRhyB" component-url="/_astro/AuthHandler.DqEHQxfD.js" component-export="default" renderer-url="/_astro/client.aV2KyXRk.js" props="{&quot;locale&quot;:[0,&quot;zh&quot;]}" client="only" opts="{&quot;name&quot;:&quot;AuthHandler&quot;,&quot;value&quot;:&quot;react&quot;}"></astro-island> <script type="module" src="/_astro/dashboard.astro_astro_type_script_index_0_lang.CgAmDvKW.js"></script></body></html>
